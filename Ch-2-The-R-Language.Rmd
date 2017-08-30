@@ -1,0 +1,44 @@
+---
+title: "Ch 2. The R Language"
+output: html_notebook
+---
+
+**Assignment** uses the assignment operator "<-" to create a named object that comprises of other objects. 
+
+**c()** denotes a vector
+
+```{r}
+x <- c(2,4,6,8)
+x
+```
+Install some add-on packages that we will need
+
+```{r}
+install.packages(c("lavaan","semPlot","corrplot","multcomp"))
+```
+This data set contains observations from sales and product satisfaction survey.
+
+* It has 500 consumers' answers
+* **iProdSAT:** satisfaction with a product
+* **iSalesSAT:** satisfaction with sales experience
+* **iProdREC:** likelihood to recommend the product
+* **iSalesREC:** likelihood to recommend the salesperson
+* **Segement:** numerically-coded segment
+
+The function **`factor`** is used to encode a vector as a factor/category. For this data set, we set `Segment` to be a categorical factor variable. Observe Segment is now a factor data type:
+
+```{r}
+satData <- read.csv("http://goo.gl/UDv12g")
+satData$Segment <- factor(satData$Segment)
+head(satData)
+```
+
+Next we can plot the corr matrix excluding the categorical `Segment` variable in column 3 by specifying -3 in our slice of `satData`.
+
+`corrplot.mixed(corr)`: Using mixed methods to visualize a correlation matrix.
+
+`cor(x,y = NULL)`: computes the correlation of x and y if these are vectors.
+```{r}
+library(corrplot)
+corrplot.mixed(cor(satData[,-3]))
+```
