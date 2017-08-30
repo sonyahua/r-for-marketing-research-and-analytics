@@ -1,9 +1,9 @@
 ---
 title: "Ch 2. The R Language"
-output:
+output: 
   html_document: default
   html_notebook: default
-  rmarkdown: github_document
+  github_document: default
 
 ---
 
@@ -14,6 +14,7 @@ output:
 **c()** denotes a vector
 
 ```{r}
+install.packages("rmarkdown")
 x <- c(2,4,6,8)
 x
 ```
