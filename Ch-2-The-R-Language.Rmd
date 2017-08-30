@@ -1,9 +1,11 @@
 ---
 title: "Ch 2. The R Language"
 output:
-  github_document: default
-  html_document: default
+  html_document: 
+        keep_md: true
   html_notebook: default
+  github_document: default
+  md_document: default
 ---
 
 ### 2.2 A Quick Tour of R's Capabilities Using ANOVA, SEM on Consumer Survey Data
@@ -14,6 +16,7 @@ output:
 
 ```{r}
 install.packages("rmarkdown")
+# Testing
 x <- c(2,4,6,8)
 x
 ```
