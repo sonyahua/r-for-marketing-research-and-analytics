@@ -3,6 +3,8 @@ title: "Ch 2. The R Language"
 output:
   html_document: default
   html_notebook: default
+  rmarkdown: github_document
+
 ---
 
 ### 2.2 A Quick Tour of R's Capabilities Using ANOVA, SEM on Consumer Survey Data
