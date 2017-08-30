@@ -1,12 +1,10 @@
 ---
 title: "Ch 2. The R Language"
-output: 
-  html_document:
-    keep_md: true
+output: rmarkdown::github_document
 ---
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(
-  fig.path = "README_figs/README-"
+  fig.path = "Plots/FIG-"
 )
 ```
 
