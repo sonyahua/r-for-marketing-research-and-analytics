@@ -237,7 +237,7 @@ str(xMix)  # str for structure
 xNum[1]
 xMix[1]
 xNum[1] + 1
-xMix[1] + 1  # throws an error due to char + numtype
+# xMix[1] + 1  # throws an error due to char + numtype
 
 ```
 To explicity coerce a char type to numeric, use `as.numeric()` function
@@ -486,3 +486,198 @@ summary(store.df)
 ```
 
 ##### 2.6 Loading and Saving Data
+
+Covers:
+
+* How to save and read native R objects
+* How to save entire R sessions
+* How to read and write CSV formats
+
+**Native/Binary R objects** are representations of objects in an R-specific format. If we need to save an object exclusively for R, this format will be useful to us. Use `save()` to write a binary object to disk and `load()` to read it.
+
+`save(OBJECT, FILE)` saves the object in current working directory as the FILE name. It can also take a group of objects as an argument by using `list=c()` and filling in `c()` with a char vector. FILE is the file name of saves object. `.RData` is the native data file type for R.
+
+`load(FILE)`: loads a file and reads it. It's objects are placed into memory. When a file is loaded, its objects will overwite any other objects in memory with the same names. 
+
+`getwd()`: reports the working directory
+
+`setwd(PATH)`: sets working directory path
+
+```{r}
+getwd()
+
+save(store.df, file="store-df-backup.RData") #saving it to wd
+
+rm(store.df) # deleting it from memory. Only use if after save() gives no error
+
+mean(store.df) # Provides an error since we removed store.df from memory
+
+load("store-df-backup.RData")
+mean(store.df$store.rev)
+```
+```{r}
+# illustration of overwriting behavior from load()
+store.df <- 5
+load("store-df-backup.RData")
+store.df
+```
+
+###### Filenames and Workspace Image Files
+
+Note, paths need to be specified with '/' instead of '\' as in Windows.  We can use tilde ~ to specify current working directory path in our path. 
+
+`list.files()` : lists the files in a working directory
+
+`save.image(FILE)` saves the image of an entire working session. If FILE is excluded, it defaults to a file named ".RData". Base R and R Studio will prompt us to save a memory image upon closing, but we can also do it ourselves using save.image()
+
+`file.remove()` removes files from working directory. The status returned by this function is a vector indicating whether each file was removed (TRUE) or not (FALSE). 
+
+```{r}
+save.image() # saves file ".RData"
+list.files()
+```
+
+Loading an image will overwite current memory objects that have the same names. It does not restore memory to a snapshot of a previous state, but rather adds those contents to current memory. 
+
+###### CSV Files
+
+Many analysts save data in delimited files such as CSV files and tab-separated value files (TSV) to move data between tools like R, db's, MS Excel.
+
+`write.csv(OBJECT, file=)` writes data to a CSV file. It's highly recommended to add `row.names = F` option to eliminate an unnamed column containing labels for each row. 
+
+`read.csv(FILE)`: reads data from a CSV file formatted as a data frame.
+
+One of the disadvantages with CSV files is that they lose var dtype distinctions because they are read out in plain text:
+
+```{r}
+write.csv(store.df, row.names=F)
+write.csv(store.df, file="store-df.csv", row.names=F)
+```
+```{r}
+read.csv("store-df.csv")
+```
+
+```{r}
+store.df2 <- read.csv("store-df.csv", stringsAsFactors = F)
+store.df2 
+```
+
+```{r}
+store.df2$store.num <- factor(store.df2$store.num)
+str(store.df2$store.num)
+```
+
+```{r}
+store.df == store.df2
+```
+
+Using `all.equal(x,y)`` is more useful to compare differences between objects since it ignores binary rounding errors. Also, the output is more compact:
+```{r}
+all.equal(store.df, store.df2)
+```
+
+A more general overview of options for data exchange is provided by the *R Data Import/Export* manual
+
+##### 2.7 Writing Your Own Functions
+
+Many analyses in R are repetitive i.e. compute statistics across slices of data such as different sales regions, produce analyses from new data sets every quarter, etc. R provides functions to let us write a set of commands and reuse it on different data. 
+
+A schematic for a new function is: `FUNC NAME <- function(INPUTS) {EXPR}` where EXPR is usually a set of multiple lines that operate on the inputs. By default, the return value of the function is the output of the last command in the function declaration. 
+
+For inputs, we can name them with any legal variable name in R. *Arguments* are inputs in a function while *parameters* are inputs in a statistical model. An argument has meaning only within its function (scoped to function). Outside the function, they don't exist. 
+
+When writing a function, it's recommended to:
+
+* Put braces around the body using { and } even it's a one-liner
+* Create temporary values to hold results along the way inside the function
+* Comment regularly
+* Use `return()` to show the explicit value returned by the function
+```{r}
+se <- function(x) {sd(x) / sqrt(length(x))}
+se(store.df$store.visits)
+
+# Provide standard error per deviation
+```
+For example, to compute the upper-bound 95% CI as, we calculate the mean + 1.96 SE
+```{r}
+mean(store.df$store.visits) + 1.96 * se(store.df$store.visits)
+```
+*Observe*: If the data is a representative sample from a larger population, we expect the mean of samples to be 65.51 or less in 97.5% of the samples (97.5% because the 9% confidence interval is symmetric around 50%, extending from 2.5 to 97.5%). We can be very confident from this data that the mean number of store visits is less than 65.52.
+```{r}
+# se() function rewritten
+
+se <- function(x) {
+  tmp.sd <- sd(x)  #tmp is just another named variable to help us remember
+  tmp.N <- length(x)
+  tmp.se <- tmp.sd / sqrt(tmp.N) 
+  return(tmp.se)
+}
+
+se  # For more info on a function simply type in function name without parentheses
+```
+
+##### If/While/For Control Structures
+
+```{r}
+# if (TEST) {EXPR} [else EXPR.B]  # do EXPR if Test is true, else EXPR.b
+
+se(store.df$store.visits)
+
+if (se(store.df$store.visits) > 5) {
+  print("SE is greater than 5")
+  } else {
+  print("SE is less than 5")
+  }
+
+
+```
+```{r}
+# For expressions
+
+for (i in 1:10) {
+  print(paste("The number is", i))
+}
+```
+```{r}
+# While expressions
+i = 0
+while (i<=10) {
+  i = i + 1
+  print(paste("The number is", i))
+}
+```
+
+##### Lambda Functions (Anonoymous Functions)
+
+Can substitute for a general expression and does not need to be declared as a named function. We use `apply/lapply()`
+```{r}
+my.data <- matrix(runif(100), ncol=5)
+
+# Without lambda functions
+apply(my.data, 2, median) / 2
+
+# Another way
+halfmedian <- function(x){median(x) / 2}
+apply(my.data,MARGIN=2, FUN=halfmedian)
+
+# Using lambda functions
+apply(my.data, 2, function(x){ median(x) / 2})
+
+```
+
+##### Cleaning Up Memory
+
+R keeps everying in memory by default.
+
+`ls()` to list objects stored in memory
+`rm()` to remove objects from memory
+`rm(list=c(LIST)` to remove several objects in character vector of names
+`rm(list=ls(pattern="STRING"))` to remove objects following a pattern
+`rm(list=ls())` delects all visible objects in memory
+
+```{r}
+ls()
+rm(i)
+ls()
+```
+
