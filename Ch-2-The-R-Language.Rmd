@@ -300,3 +300,189 @@ xNum[c(TRUE, TRUE, FALSE, FALSE)]
 xNum[xNum >= 5]
 ```
 
+##### Missing, Undefined, and Infinity Values
+
+Missing values are denoted as `NA` which is a special dtype for missing values. Any math performed on a `NA` becomes `NA`. 
+
+1. We can override this behavior by telling R to ignore `NA` data rather than calculating on it. Many commands include argument `na.rm=TRUE` to ignore NA values.
+
+2. Another way is to remove NA values before calculating on them. This is done most eaisly with `na.omit()` on the data.
+
+3. We can also test for NA values using the `is.na()` function and then index data on that function for values that are *not* NA by adding the `!` for "not" operator
+
+```{r}
+my.test.scores <- c(91, NA, NA, 100)
+
+mean(my.test.scores)
+max(my.test.scores)
+```
+
+```{r}
+# Method 1: Using na.rm=TRUE
+mean(my.test.scores, na.rm=TRUE)
+
+# Method 2: Using na.omit()
+mean(na.omit(my.test.scores))
+
+# Method 3: Indexing on !is.na()
+is.na(my.test.scores)
+mean(my.test.scores[!is.na(my.test.scores)])
+
+```
+
+When importing data, be careful of numeric values such as "-9999" to denote missing data. We will need to replace those values with NA using indices. The third command below tells R to select `my.test.scores` where the value is lower than -9000 and replace those elements with NA:
+```{r}
+my.test.scores <- c(91,-9999, 100, -9999)
+my.test.scores[my.test.scores < -9000] <- NA
+my.test.scores
+mean(my.test.scores, na.rm=TRUE)
+```
+R handles infinity and undefined numbers as `Inf` and `NaN`:
+```{r}
+log(-1)
+log(0)
+```
+
+##### Lists
+
+Lists, unlike vectors, are collections of objects of any type (i.e more than 1 data type). All elements in a vector must be the same type. We can combine vectors of different dtypes in a list using `list()`. Using `str()` we see that objects inside the list retain the types that they have as separate vectors
+
+Lists are indexed with double backeds ([[ and ]]) instead of the single brackets that vectors use. For example, `xList` comprises of 2 objects that are indexed as [[1]] and [[2]]. We can index the objects and find summary info on each object. 
+
+```{r}
+str(xNum)
+str(xChar)
+```
+
+```{r}
+xList <- list(xNum, xChar)
+xList
+
+str(xList)
+```
+
+```{r}
+summary(xList[[1]])
+summary(xList[[2]])
+```
+It's easier to run command on all memebers of the list at once using `lapply(OBJECT,FUNCTION)` or "list apply" command. The function is applied to each object. `xList` is separated into separate list elements then it ran `summary()` on each element:
+```{r}
+lapply(xList, summary)
+```
+###### Naming List Elments
+
+Each elmeent in a list may be assigned a name which you can call via indexing or `names()`. To assign names to objects in a list, use the `names(OBJECT)` and a vector with the names. Another way is to create and name at the same time by assigning a name to the objects within `list()`:
+
+```{r}
+# Method 1: Create list, then names()
+xList <- list(xNum, xChar)
+names(xList) <- c("Numbers", "Characters")
+xList
+names(xList)
+```
+
+```{r}
+# Method 2: Create and name as once using list()
+xList <- list(Numbers=xNum, Characters=xChar)
+xList
+names(xList)
+```
+```{r}
+# List indexing
+xList[[1]] # indexing using position
+xList$Numbers # indexing using $
+xList[["Numbers"]] # indexing using [[""]]
+```
+
+#### Data Frames
+
+Learning to work with data frames is perhaps the most important set of skills in R. Data frames include columns as **variables** and rows as **observationas**. We can construct a data frame using `data.frame()` function which takes an input of set of vectors with same length. 
+
+In this code, we use *dot notation* with a suffix.`.df` to remind us it is a data frame. Column names are inherited from vectors and each row is numbered sequentially starting at 1.  
+```{r}
+(x.df <- data.frame(xNum, xLog, xChar)) 
+# putting parenthess around the whole expression tells R to evalute the resulting object. This saves typing. 
+
+```
+```{r}
+x.df[2,1] # Select row 2, col 1
+x.df[1,3] # Select row 1, col 3.... this is a factor variable
+```
+###### Nominal Factors
+
+By default, R converts char data to nominal factors. For ex, when xChar was added to the df, its values were added as levels of a **categorical (nominal) data type**. Internally, R stores factor vars as a vector of integers and a seperate list of labels naming the categories. Categories are called **levels** and can be accessed with `levels()` function.
+
+We can override this behavior by calling `stringsAsFractors = F` in our `data.frame()` function, since there can be char vars that aren't really factors such as addresses, names, etc.. in survey data.  
+```{r}
+(x.df <- data.frame(xNum, xLog, xChar, stringsAsFactors=F))  # xChar is now of char type
+```
+
+```{r}
+print(x.df[,3]) # select all rows in col 3
+
+```
+
+```{r}
+x.df[2:3,]
+```
+
+```{r}
+x.df[-3:-4,] #excl row 3 and 4
+```
+Indexing a data frame returns an object. The object type depends on the selected objects:
+
+* choosing a single element outputs a vector of length 1
+* choose a column or row outputs a vector
+* choosing rows and columns outputs a data frame
+
+```{r}
+str(x.df[2,1])
+str(x.df[,2])
+str(x.df[1,2:3])
+str(x.df$xNum)
+```
+
+Let's create a mock marketing research data set by cleaning up our workspace then creating new data. Notice below, we specified that store number is a **nominal factor** (telling R isn't not really a number but a factor). 
+
+We can get a get a list of our store managers by selcting that column using $ notation.
+
+`rm()` removes objects
+```{r}
+# delete all objects using rm(list=ls())
+rm(list=ls())
+
+# store values within each column
+store.num <- factor(c(3,14,21,32,54))
+store.rev <- c(545, 654, 345, 678, 234)
+store.visits <- c(45,78,32,56,34)
+store.manager <- c("Annie", "Bert", "Carla","Dave","Ella")
+
+# create df
+(store.df <- data.frame(store.num, store.rev, store.visits, store.manager, stringsAsFactors=F))  
+# Unless we've explicitly declared a var as a factor, all char vars should not be considered Factors
+```
+```{r}
+store.df$store.manager
+```
+
+```{r}
+mean(store.df$store.rev)
+```
+
+We can also pass columns from the df to statistical functions like `mean()` Similarly, we can use the `cor()` function to compute the Pearson product-moment correlation coefficient (Pearson's R), to gauge the association between store visits and revenue in our data
+```{r}
+cor(store.df$store.rev, store.df$store.visits) # Pearson's R
+```
+For `summary()`:
+
+* Factor vars: frequency counts
+* numeric vars: arithmetic summaries
+* char vars: simple descr. of the char var
+
+```{r}
+# Obtain basic stats
+
+summary(store.df) 
+```
+
+##### 2.6 Loading and Saving Data
