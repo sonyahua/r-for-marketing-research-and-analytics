@@ -1,6 +1,7 @@
 ---
 title: "Ch 2. The R Language"
 output: rmarkdown::github_document
+
 ---
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(
@@ -245,7 +246,7 @@ To explicity coerce a char type to numeric, use `as.numeric()` function
 as.numeric(xMix[1]) + 1
 ```
 ```{r}
-browseVignettes()  # A helpful function for providing info on all installed packages
+# browseVignettes()  # A helpful function for providing info on all installed packages
 ```
 
 ```{r}
@@ -506,19 +507,19 @@ Covers:
 ```{r}
 getwd()
 
-save(store.df, file="store-df-backup.RData") #saving it to wd
+#save(store.df, file="store-df-backup.RData") #saving it to wd
 
-rm(store.df) # deleting it from memory. Only use if after save() gives no error
+#rm(store.df) # deleting it from memory. Only use if after save() gives no error
 
-mean(store.df) # Provides an error since we removed store.df from memory
+#mean(store.df) # Provides an error since we removed store.df from memory
 
-load("store-df-backup.RData")
-mean(store.df$store.rev)
+#load("store-df-backup.RData")
+#mean(store.df$store.rev)
 ```
 ```{r}
 # illustration of overwriting behavior from load()
 store.df <- 5
-load("store-df-backup.RData")
+#load("store-df-backup.RData")
 store.df
 ```
 
@@ -563,8 +564,8 @@ store.df2
 ```
 
 ```{r}
-store.df2$store.num <- factor(store.df2$store.num)
-str(store.df2$store.num)
+#store.df2$store.num <- factor(store.df2$store.num)
+#str(store.df2$store.num)
 ```
 
 ```{r}
@@ -593,14 +594,14 @@ When writing a function, it's recommended to:
 * Comment regularly
 * Use `return()` to show the explicit value returned by the function
 ```{r}
-se <- function(x) {sd(x) / sqrt(length(x))}
-se(store.df$store.visits)
+#se <- function(x) {sd(x) / sqrt(length(x))}
+#se(store.df$store.visits)
 
 # Provide standard error per deviation
 ```
 For example, to compute the upper-bound 95% CI as, we calculate the mean + 1.96 SE
 ```{r}
-mean(store.df$store.visits) + 1.96 * se(store.df$store.visits)
+#mean(store.df$store.visits) + 1.96 * se(store.df$store.visits)
 ```
 *Observe*: If the data is a representative sample from a larger population, we expect the mean of samples to be 65.51 or less in 97.5% of the samples (97.5% because the 9% confidence interval is symmetric around 50%, extending from 2.5 to 97.5%). We can be very confident from this data that the mean number of store visits is less than 65.52.
 ```{r}
@@ -621,13 +622,13 @@ se  # For more info on a function simply type in function name without parenthes
 ```{r}
 # if (TEST) {EXPR} [else EXPR.B]  # do EXPR if Test is true, else EXPR.b
 
-se(store.df$store.visits)
+#se(store.df$store.visits)
 
-if (se(store.df$store.visits) > 5) {
-  print("SE is greater than 5")
-  } else {
-  print("SE is less than 5")
-  }
+#if (se(store.df$store.visits) > 5) {
+#  print("SE is greater than 5")
+#  } else {
+#  print("SE is less than 5")
+#  }
 
 
 ```
