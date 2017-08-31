@@ -162,3 +162,141 @@ semPaths(sat.fit, what="est",
 
 * Each proposed latent var is highly loaded (contingent) on its observed (manifested) survey items. (1.0 and 1.7 for SAT, 1.0 and .90 for REC)
 * Customers' latent satisfaction (SAT) is shown to have a strong association or relationship with their likelihood to recommend (REC) with an estimated coefficient of 0.76. See Ch. 10 FMI.
+
+### 2.4 Basic Objects in R
+
+The 3 most important data types are vectors, lists, and data frames. 
+
+#### Vectors
+
+A 1D collection of data points of the same type. 
+
+* The command `c()` indicates to R that we are entering the elements of a vector. 
+* `summary()` provides an overall summary of the object. For vectors of numerics, range and central tendency stats are given. For vectors of strings, it reports the length of vector and type of elements
+* Indexing denotes particular elements of a data structure
+* Vectors are indexed with square brackets `[#]`
+```{r}
+# Vector assignment
+x <- c(2,4,6,8)
+x
+
+xNum <- c(1, 3.1453, 5, 7)
+xLog <- c(TRUE, FALSE, TRUE, TRUE)
+xChar <- c("foo", "bar", "boo", "far")
+xMix <- c(1, TRUE, 3, "Hello, World!")  # special characters within quotations are included as part of char
+
+xNum
+```
+```{r}
+# Vectors may be appended/combined using c():
+
+x2 <- c(x,x)
+x2
+```
+```{r}
+# Summary function
+print(summary(xNum))
+cat("\n")
+print(summary(xMix))
+cat("\n")
+print(summary(xLog))  # Provides True False counts
+
+```
+```{r}
+# Indexing
+xNum[2]
+
+# Arithmetic operations
+x2 +1
+x2 * 2
+x2 * pi
+```
+
+```{r}
+# Recycling: Reusing the vector of shortest length if lengths do not match
+
+x + x2
+length(x)
+length(x2)
+```
+
+When creating a vector, R automatically assigns a data type or class to all elements in the most *generalized* format. For example, c(1,2,3.4) would be *coerced* to type `double` because of the real number 3.5 is more *general* than the integer 1.
+
+```{r}
+c(1,2,3.5)
+c(1.30, 2.3958, 3)
+```
+
+The most generalized format for `xMix` is `char`:
+```{r}
+str(xMix)  # str for structure
+```
+```{r}
+# Arithmetic operations based on matching/non-matching data types
+
+xNum[1]
+xMix[1]
+xNum[1] + 1
+xMix[1] + 1  # throws an error due to char + numtype
+
+```
+To explicity coerce a char type to numeric, use `as.numeric()` function
+```{r}
+as.numeric(xMix[1]) + 1
+```
+```{r}
+browseVignettes()  # A helpful function for providing info on all installed packages
+```
+
+```{r}
+# To create integer sequences, use ":"
+xSeq <- 1:10
+xSeq
+str(xSeq)
+
+# When applying math to int sequences, be careful of order of operation. ":" is applied first before any other operation
+1:5*2
+1:(5*2)
+
+```
+Sequences are useful for indexing and you can use sequences inside indexing [ ]:
+```{r}
+xNum
+xNum[2:4]
+
+myStart <- 2
+xNum[myStart:sqrt(myStart + 7)] # Evals to xNum[2:3]
+```
+For more sophisticated sequences, use `seq()` for sequence and `rep()` for replicated sequences. In the last example below, we look at the inner expression sequence `[-3, 1,...13]`. Each ELEMENT of that vector will be replicated n-times as specified in the 2nd argument to `rep()`. Replicate, not multiply! 
+
+We can also exclude items by using negative indices `xSeq[-1]` i.e. exclude first element
+```{r}
+seq(from=-5, to=28, by=4) # start from -5 to 28 and step -4
+rep(c(1,2,3), each=3)  # replicate the vector 3 times
+seq(from=-3, to=13, by=4)
+rep(seq(from=-3, to=13, by=4), c(1,2,3,2,1))
+```
+```{r}
+# Exclude items
+xSeq
+xSeq[-1] # Excluding 1st element
+xSeq[c(-1,-10)]  # Excluding more than one element requires a vector argument
+```
+
+```{r}
+# 1 is the start of the row. It indicates the vector position index of the 1st item printed on each row of output
+1:300
+```
+```{r}
+xNum[2:4]
+xSub <- xNum[2:4]
+xSub
+
+# Indexing also works with logical values
+xNum
+xNum[c(TRUE, TRUE, FALSE, FALSE)]
+
+# We can also index based on conditions 
+xNum[xNum >= 5]
+```
+
