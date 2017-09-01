@@ -1,0 +1,148 @@
+---
+title: "Ch 3. Describing Data"
+author: "Sonya Hua"
+date: "September 1, 2017"
+output: rmarkdown::github_document
+---
+
+## 3.1 Simulating Data
+
+It's important to describe and explore any data set before moving on to more complex analysis. We will be created data to be analyzed in later parts of the chapter. The process of creating data lets us practice and deepen R skills from Ch. 2. It also lets us manipulate synthetic dat, run analyses again, and examine how the results can change. R analysts often use simulated data to prove that their methods are working as expected. 
+
+Our 1st data set is composed of observations of total sales by week for 2 products at a chain of stores around the world (20 stores total) over 2 years, with price and promotion status. 
+
+### 3.1.1 Store Data & Setting Up the Data Structure
+
+```{r}
+k.stores <- 20
+k.weeks <- 104
+
+# create a data frame of initially missing values to hold the data
+store.df <- data.frame(matrix(NA, ncol=10, nrow=k.stores * k.weeks))
+names(store.df) <- c("storeNum", "Year", "Week", "p1sales", "p2sales", 
+                     "p1price", "p2price", "p1prom", "p2prom", "country")  # Assign Var Names to df
+str(store.df)
+dim(store.df) # get dimensions of df
+```
+
+Create 2 vectors that will represent the store number and country per observation:
+```{r}
+(store.num <- 101:(100+k.stores))
+(store.cty <- c(rep("US",3), rep("DE",5), rep("GB", 3), rep("BR",2),
+                rep("JP",4), rep("AU",1), rep("CN",2)))  # Store's country location
+length(store.cty)
+```
+Now we replace the appropriate cols in the df with those values using `rep()` to expand the vectors to match the # of stores and weeks
+```{r}
+store.df$storeNum <- rep(store.num, each=k.weeks) # each = # of times each element is repeated
+# This is different from "times=" which repeats the whole vector n-times
+store.df$country <- rep(store.cty, each =k.weeks) 
+rm(store.num, store.cty) # clean up memory
+
+```
+Do the same process for the Week and Year columns:
+
+```{r}
+store.df$Week <- rep(c(1:52),times=k.stores * 2) # Replicate 52 weeks 40 times so that there will be 2 years per store
+store.df$Year <- rep(c(1,2), each=52, times=k.stores)  # Replicate Year 1 and 2-  52x per store
+```
+Let's check the overall data structure:
+```{r}
+str(store.df)
+```
+*Observe*
+
+* Data values populated as expected, with proper col names
+* `country` has a char type when it should be factor var since it is a categorical value
+* `storeNum` has a int type when it should be factor var since we will be categorizing by store number and it is a label from something else
+
+By converting `country` and `storeNum` to factors, R will know to tream them as categorical inputs in subsequent analyses i.e. regression models. It's best practice to set var types correctly early on as they are created to avoid errors later:
+```{r}
+store.df$storeNum <- factor(store.df$storeNum)
+store.df$country <- factor(store.df$country)
+store.df$Week <- as.integer(store.df$Week)
+store.df$Year <- as.integer(store.df$Year)
+str(store.df)
+
+```
+*Observe* storeNum (with 20 levels) and country (with 7 levels) has been converted to factors. 
+```{r}
+# check first and last rows for mistakes
+head(store.df, 120)
+
+```
+
+```{r}
+tail(store.df, 120)
+```
+*Obs*: The data seemed to have been inputted correctly
+
+We can now move on to filling in the rest of the data points, namely the specific measures like sales, price, promotion (Y/N)
+
+
+### 3.1.2 Simulating Measurement Data Points
+
+We'll complete store.df with random data for *store-by_week* observations of the sales, price, and promotional status of 2 products. 
+
+##### On Randomizing Data
+
+It's best practice to set the random number generation **seed** to make the data replicable. When setting a seed, we draw random samples in the same sequence again and get **pseudo-random** numbers via **Pseudorandom number generators (PRNGs) using `set.seed()`.
+
+`p1prom, p2prom`: Per observation (or week), we will set the status of whether each product was promoted (1 = Yes, 0 = No), by drawing randomly from a binomial distirbution that counts the number of "heads" in a collection of coin tosses where the coin can have a specified proportion of heads). To do this, we use `rbinom(n, size, p)` for random binomial function. For every row, we draw from this distribution with specified number of heads in a single toss `n=nrow(store.df), size=1`. 
+
+* *Assume p1 has a `p=0.1` probability and p2 has a `p=0.2` probability of being promoted *
+
+```{r}
+store.df$p1prom <- rbinom(n=nrow(store.df), size=1, p=0.10) # product 1 is promoted 10% of time
+store.df$p2prom <- rbinom(n=nrow(store.df), size=1, p=0.15) # product 2 is promoted 15% of time
+
+```
+
+`p1price, p2price` : Assume each product is sold at 1:5 distinct price points ranging from $2.19 to $3.19 overall. We will randomly draw a price for each week by defining a vector with the price points and using `sample(x, size, replace)` to draw from it as many times as we have rows of data `size=nrow(store.df)`. We want to sample with replacement so random prices is reflected in the data with `replace=TRUE`. 
+```{r}
+store.df$p1price <- sample(x=c(2.19, 2.29, 2.49, 2.79, 2.99), size=nrow(store.df), replace=TRUE)
+store.df$p2price <- sample(x=c(2.29, 2.49, 2.59, 2.99, 3.19), size=nrow(store.df), replace=TRUE) # slightly more expensive that product 1
+
+# check progress
+head(store.df)
+```
+
+`p1sales, p2sales` (in Units): We can calculate sales as a relative function between *price* and *promotional status* of each. Since item sales are in unit counts, we use the **Poisson Distribution** to generate count data `rpois(n, lambda)` where `n=` # of draws and `lambda=` mean value of units per week. For each row `(nrow=store.df)` we draw from this random poisson count. Assume product 1 mean sales (lambda=120) is higher than product 2 (lambda=100). 
+
+* Price effects -  often follow a logarithmic relationship vs. linear so we should scale these counts up/down according to the relative prices using `log(price)`. For price effects, we assume that sales vary inversely with prices between p1 and p2. The customer will select p1 if it's cheaper than p2. E.g. sales of product 1 go up when `log(price)` of product 1 is lower than `log(price) of product 2.
+
+* Promo effects - Assume sales get a 30% or 40% lift when each product is promoted in store. Simply multiply promotional status x 0.3 or 0.4 respectively, then multiple sales vector by that. 
+
+Use `floor()` function to drop fractional values and ensure integer counts for weekly unit sales. 
+```{r}
+# first, create default sales without promotion
+tmp.sales1 <- rpois(nrow(store.df),lambda=120) # p1 mean sales is slightly higher than p2
+tmp.sales2 <- rpois(nrow(store.df),lambda=100)
+
+#second, scale counts up/down based on the RATIO OF LOG(PRICE)
+tmp.sales1 <- tmp.sales1 * log(store.df$p2price) / log(store.df$p1price) # when p1 is cheaper, sales go up as part of the denominator
+tmp.sales2 <- tmp.sales2 * log(store.df$p1price) / log(store.df$p2price)
+
+# third, p1 sales get a 30% lift when promoted and p2 sales get a 40% lift when promoted
+store.df$p1sales = floor(tmp.sales1 * 1 + store.df$p1prom * 0.3)
+store.df$p2sales = floor(tmp.sales2 * 1 + store.df$p2prom * 0.4)
+
+# inspect data frame and check for errors
+head(store.df)
+
+
+```
+
+```{r}
+# use some() to further inspect from random sampling
+library("car")
+some(store.df)
+```
+
+*Obs*: sales seem to have been calculated correctly based on price ratios and promotional lifts. 
+
+### 3.2 Functions to Summarize a Variable
+
+Obs may comprise of discrete data that occurs at specific levels or continuous data with many possible values within an interval. 
+
+
