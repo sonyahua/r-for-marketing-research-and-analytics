@@ -655,14 +655,14 @@ head(store.df)
 ```
 
     ##   storeNum Year Week p1sales p2sales p1price p2price p1prom p2prom country
-    ## 1      101    1    1      NA      NA    2.19    2.29      0      0      US
-    ## 2      101    1    2      NA      NA    2.49    2.49      0      1      US
-    ## 3      101    1    3      NA      NA    2.19    2.59      0      0      US
-    ## 4      101    1    4      NA      NA    2.99    2.29      0      0      US
-    ## 5      101    1    5      NA      NA    2.99    2.29      0      0      US
-    ## 6      101    1    6      NA      NA    2.19    2.99      0      1      US
+    ## 1      101    1    1      NA      NA    2.19    2.99      0      1      US
+    ## 2      101    1    2      NA      NA    2.79    2.49      0      1      US
+    ## 3      101    1    3      NA      NA    2.29    2.29      0      0      US
+    ## 4      101    1    4      NA      NA    2.49    2.49      0      0      US
+    ## 5      101    1    5      NA      NA    2.79    2.99      0      0      US
+    ## 6      101    1    6      NA      NA    2.79    2.49      0      0      US
 
-`p1sales, p2sales` (in Units): We can calculate sales as a relative function between *price* and *promotional status* of each. Since item sales are in unit counts, we use the **Poisson Distribution** to generate count data `rpois(n, lambda)` where `n=` \# of draws and `lambda=` mean value of units per week. For each row `(nrow=store.df)` we draw from this random poisson count. Assume product 1 mean sales (lambda=120) is higher than product 2 (lambda=100).
+`p1sales, p2sales` (in Units): We can calculate sales as a relative function between *price* and *promotional status* of each. Since item sales are in unit counts, we use the [Poisson Distribution](https://www.umass.edu/wsp/resources/poisson/) to generate count data `rpois(n, lambda)` where `n=` \# of draws and `lambda=` mean value of units per week. For each row `(nrow=store.df)` we draw from this random poisson count. Assume product 1 mean sales (lambda=120) is higher than product 2 (lambda=100).
 
 -   Price effects - often follow a logarithmic relationship vs. linear so we should scale these counts up/down according to the relative prices using `log(price)`. For price effects, we assume that sales vary inversely with prices between p1 and p2. The customer will select p1 if it's cheaper than p2. E.g. sales of product 1 go up when `log(price)` of product 1 is lower than \`log(price) of product 2.
 
@@ -688,12 +688,12 @@ head(store.df)
 ```
 
     ##   storeNum Year Week p1sales p2sales p1price p2price p1prom p2prom country
-    ## 1      101    1    1     137      88    2.19    2.29      0      0      US
-    ## 2      101    1    2     127     104    2.49    2.49      0      1      US
-    ## 3      101    1    3     134      74    2.19    2.59      0      0      US
-    ## 4      101    1    4      90     138    2.99    2.29      0      0      US
-    ## 5      101    1    5      80     141    2.99    2.29      0      0      US
-    ## 6      101    1    6     153      69    2.19    2.99      0      1      US
+    ## 1      101    1    1     150      72    2.19    2.99      0      1      US
+    ## 2      101    1    2      93     108    2.79    2.49      0      1      US
+    ## 3      101    1    3     128      87    2.29    2.29      0      0      US
+    ## 4      101    1    4     113     115    2.49    2.49      0      0      US
+    ## 5      101    1    5     121      91    2.79    2.99      0      0      US
+    ## 6      101    1    6     113     122    2.79    2.49      0      0      US
 
 ``` r
 # use some() to further inspect from random sampling
@@ -702,30 +702,347 @@ some(store.df)
 ```
 
     ##      storeNum Year Week p1sales p2sales p1price p2price p1prom p2prom
-    ## 86        101    2   34     152      86    2.19    2.49      0      1
-    ## 157       102    2    1     160      83    2.19    2.99      0      0
-    ## 499       105    2   31     140      85    2.49    2.99      0      0
-    ## 541       106    1   21     173      69    2.29    3.19      0      0
-    ## 735       108    1    7     122     106    2.49    2.49      1      0
-    ## 858       109    1   26     116      78    2.19    2.59      0      0
-    ## 1088      111    1   48     147      60    2.29    3.19      0      0
-    ## 1090      111    1   50     134      95    2.79    2.99      0      1
-    ## 1994      120    1   18      94     145    2.99    2.29      1      1
-    ## 2019      120    1   43     126      70    2.19    2.59      0      0
+    ## 132       102    1   28     139      92    2.49    2.49      0      0
+    ## 365       104    2    1      99     110    2.99    2.59      0      0
+    ## 655       107    1   31     198      66    2.19    3.19      1      0
+    ## 931       109    2   47     147      88    2.29    2.59      0      0
+    ## 1092      111    1   52      91     105    2.99    2.59      0      0
+    ## 1325      113    2   25     161      78    2.29    3.19      0      0
+    ## 1892      119    1   20     119     122    2.79    2.29      0      0
+    ## 1935      119    2   11      97     133    2.99    2.29      1      0
+    ## 2056      120    2   28     124     121    2.49    2.59      0      0
+    ## 2061      120    2   33     116     105    2.49    2.49      0      0
     ##      country
-    ## 86        US
-    ## 157       US
-    ## 499       DE
-    ## 541       DE
-    ## 735       DE
-    ## 858       GB
-    ## 1088      GB
-    ## 1090      GB
-    ## 1994      CN
-    ## 2019      CN
+    ## 132       US
+    ## 365       DE
+    ## 655       DE
+    ## 931       GB
+    ## 1092      GB
+    ## 1325      BR
+    ## 1892      CN
+    ## 1935      CN
+    ## 2056      CN
+    ## 2061      CN
 
 *Obs*: sales seem to have been calculated correctly based on price ratios and promotional lifts.
 
 ### 3.2 Functions to Summarize a Variable
 
 Obs may comprise of discrete data that occurs at specific levels or continuous data with many possible values within an interval.
+
+#### Discrete Variables
+
+A basic way to describe discrete data is with frequency counts. The `table()` function will count the observed prevalence of each value that occurs in a variable.
+
+One of the most useful features of R is that most functions produce an object that can be stored as a var and re-used. The `str()` command shows us that the object produced by `table()` is a special type called table object.
+
+An analyst might want to know how often each product was promoted at each price point. The `table()` command produces 2-way cross tabs when a 2nd variable.
+
+``` r
+# frequency count table using table()
+table(store.df$p1price)
+```
+
+    ## 
+    ## 2.19 2.29 2.49 2.79 2.99 
+    ##  409  425  398  454  394
+
+``` r
+# store the table in a var
+(p1.table <- table(store.df$p1price))
+```
+
+    ## 
+    ## 2.19 2.29 2.49 2.79 2.99 
+    ##  409  425  398  454  394
+
+``` r
+str(p1.table)
+```
+
+    ##  'table' int [1:5(1d)] 409 425 398 454 394
+    ##  - attr(*, "dimnames")=List of 1
+    ##   ..$ : chr [1:5] "2.19" "2.29" "2.49" "2.79" ...
+
+``` r
+table(store.df$p1price, store.df$p1prom)
+```
+
+    ##       
+    ##          0   1
+    ##   2.19 358  51
+    ##   2.29 380  45
+    ##   2.49 357  41
+    ##   2.79 412  42
+    ##   2.99 332  62
+
+*Obs*: Product 1 is promoted approximately 10% of the time as our data intended.
+
+Using `plot()` we can pass the table for a quick bar plot. By default, R chooses a type of plot suitable for the object type.
+
+``` r
+plot(p1.table, xlab="Price", ylab="# of Products Sold")
+```
+
+![](ch-3-describing-data_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-15-1.png)
+
+We can compute the exact percentage of times p1 is on promotion at each price point if we 1) assign the table to a var and then 2) divide the 2nd col of the table by the sum of the 1st and 2nd col.
+
+``` r
+(p1.table2 <-table(store.df$p1price, store.df$p1prom))
+```
+
+    ##       
+    ##          0   1
+    ##   2.19 358  51
+    ##   2.29 380  45
+    ##   2.49 357  41
+    ##   2.79 412  42
+    ##   2.99 332  62
+
+``` r
+# Get percentage of products promoted at each price point
+p1.table2[,2] / (p1.table2[,1] + p1.table2[,2])
+```
+
+    ##       2.19       2.29       2.49       2.79       2.99 
+    ## 0.12469438 0.10588235 0.10301508 0.09251101 0.15736041
+
+#### Continuous Variables
+
+It's helpful to summarize continuous data in terms of its distribution, extremes, central tendency (mean, median, skewness), dispersion ( the degree to which it's concentrated or dispersed), and quantile (points at specific percentiles) measures.
+
+-   Extremes: `min(x), max(x)`
+-   Central Tendency: `mean(x), median(x)`
+-   Dispersion: `var(x), sd(x), IQR(x), mad(x)` or [median absolute deviation](http://www.statisticshowto.com/median-absolute-deviation/) ( a robust variance estimator)
+-   Points: `quantile(x, probs = c(....))` or Percentiles
+
+``` r
+min(store.df$p1sales)
+```
+
+    ## [1] 73
+
+``` r
+max(store.df$p2sales)
+```
+
+    ## [1] 162
+
+``` r
+mean(store.df$p1prom)
+```
+
+    ## [1] 0.1158654
+
+``` r
+median(store.df$p2sales)
+```
+
+    ## [1] 93
+
+``` r
+var(store.df$p1sales)
+```
+
+    ## [1] 661.097
+
+``` r
+sd(store.df$p1sales)
+```
+
+    ## [1] 25.71181
+
+``` r
+IQR(store.df$p1sales)
+```
+
+    ## [1] 36
+
+``` r
+mad(store.df$p1sales)
+```
+
+    ## [1] 26.6868
+
+``` r
+quantile(store.df$p1sales, prob=c(0.25,0.5,0.75))
+```
+
+    ## 25% 50% 75% 
+    ## 110 127 146
+
+``` r
+# central 90% of data
+quantile(store.df$p1sales, probs=c(0.05,0.95))
+```
+
+    ##  5% 95% 
+    ##  91 176
+
+We can also use sequences to get every 10% percentile:
+
+``` r
+quantile(store.df$p1sales, c(1:10/10))
+```
+
+    ##  10%  20%  30%  40%  50%  60%  70%  80%  90% 100% 
+    ##   97  106  114  120  127  134  141  152  165  235
+
+``` r
+# equivalent
+quantile(store.df$p1sales, probs=seq(from=0, to =1, by = 0.1))
+```
+
+    ##   0%  10%  20%  30%  40%  50%  60%  70%  80%  90% 100% 
+    ##   73   97  106  114  120  127  134  141  152  165  235
+
+Suppose we want a summary of the sales for p1 and p2 basesd on their median and IQR. We can store this summary in a df that's easier to read. We 1) create a df shell to hold our summary statistics and then 2) populate it using above functions. We'll name our columns and rows, then fill in the cells with function sales.
+
+``` r
+summary.df <- data.frame(matrix(NA, nrow=2, ncol=2))
+names(summary.df) <- c("Median Sales", "IQR")
+rownames(summary.df) <- c("Product 1", "Product 2")
+summary.df["Product 1", "Median Sales"] <- median(store.df$p1sales)
+summary.df["Product 2", "Median Sales"] <- median(store.df$p2sales)
+summary.df["Product 1", "IQR"] <- IQR(store.df$p1sales)
+summary.df["Product 2", "IQR"] <- IQR(store.df$p2sales)
+
+summary.df
+```
+
+    ##           Median Sales IQR
+    ## Product 1          127  36
+    ## Product 2           93  28
+
+*Observe*:
+
+-   Median sales are higher for product 1
+-   Variation in sales of product 1 is higher than product 2 (the IQR is also higher)
+
+### 3.3 Summarizing Data Frames
+
+3 common approaches: \* `summary()` command for preliminary descriptive inspection of a data frame or object. As best practice, always check summary reports after importing data for a quick quality check \* `describe()` command from the `psych` package reports a variety of stats for each variable in a data set including *n, range, trimmed mean, skew, kurtoses, and standard error* \* `apply()` command runs any function we specify on each of the rows AND/OR columns of an object
+
+#### 3.3.1 `summary()`
+
+`summary()` works similarly for single vectors with a horizontal display rather than vertical. The `digits=` argument if helpful to specify significant digits regardless of absolute magnitutde or the decimal position. i.e. `digits=3` means 3 significant positions.
+
+``` r
+summary(store.df)
+```
+
+    ##     storeNum         Year          Week          p1sales     
+    ##  101    : 104   Min.   :1.0   Min.   : 1.00   Min.   : 73.0  
+    ##  102    : 104   1st Qu.:1.0   1st Qu.:13.75   1st Qu.:110.0  
+    ##  103    : 104   Median :1.5   Median :26.50   Median :127.0  
+    ##  104    : 104   Mean   :1.5   Mean   :26.50   Mean   :129.4  
+    ##  105    : 104   3rd Qu.:2.0   3rd Qu.:39.25   3rd Qu.:146.0  
+    ##  106    : 104   Max.   :2.0   Max.   :52.00   Max.   :235.0  
+    ##  (Other):1456                                                
+    ##     p2sales          p1price        p2price         p1prom      
+    ##  Min.   : 52.00   Min.   :2.19   Min.   :2.29   Min.   :0.0000  
+    ##  1st Qu.: 80.00   1st Qu.:2.29   1st Qu.:2.49   1st Qu.:0.0000  
+    ##  Median : 93.00   Median :2.49   Median :2.59   Median :0.0000  
+    ##  Mean   : 95.04   Mean   :2.55   Mean   :2.71   Mean   :0.1159  
+    ##  3rd Qu.:108.00   3rd Qu.:2.79   3rd Qu.:2.99   3rd Qu.:0.0000  
+    ##  Max.   :162.00   Max.   :2.99   Max.   :3.19   Max.   :1.0000  
+    ##                                                                 
+    ##      p2prom      country 
+    ##  Min.   :0.000   AU:104  
+    ##  1st Qu.:0.000   BR:208  
+    ##  Median :0.000   CN:208  
+    ##  Mean   :0.149   DE:520  
+    ##  3rd Qu.:0.000   GB:312  
+    ##  Max.   :1.000   JP:416  
+    ##                  US:312
+
+``` r
+summary(store.df$p1sales)
+```
+
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##    73.0   110.0   127.0   129.4   146.0   235.0
+
+#### 3.3.2 `describe()`
+
+-   trimmed mean: the mean after dropping a small % of extreme values. If the trimmed mean is significantly different from the overall mean, it means outliers are skewing the mean with extreme values.
+
+Note below, that there is an \* next to the labels for `storeNum` and `country` in the output. This is a warning that they are factors and these summary statistics many not make sense. When data includes char strings or non-numerical data, `describe()` gives an error so selecting only numeric vars will solve the issue.
+
+``` r
+library(psych)
+```
+
+    ## 
+    ## Attaching package: 'psych'
+
+    ## The following object is masked from 'package:car':
+    ## 
+    ##     logit
+
+``` r
+describe(store.df)
+```
+
+    ##           vars    n   mean    sd median trimmed   mad   min    max range
+    ## storeNum*    1 2080  10.50  5.77  10.50   10.50  7.41  1.00  20.00  19.0
+    ## Year         2 2080   1.50  0.50   1.50    1.50  0.74  1.00   2.00   1.0
+    ## Week         3 2080  26.50 15.01  26.50   26.50 19.27  1.00  52.00  51.0
+    ## p1sales      4 2080 129.36 25.71 127.00  128.15 26.69 73.00 235.00 162.0
+    ## p2sales      5 2080  95.04 19.36  93.00   94.18 19.27 52.00 162.00 110.0
+    ## p1price      6 2080   2.55  0.30   2.49    2.54  0.44  2.19   2.99   0.8
+    ## p2price      7 2080   2.71  0.33   2.59    2.70  0.44  2.29   3.19   0.9
+    ## p1prom       8 2080   0.12  0.32   0.00    0.02  0.00  0.00   1.00   1.0
+    ## p2prom       9 2080   0.15  0.36   0.00    0.06  0.00  0.00   1.00   1.0
+    ## country*    10 2080   4.55  1.72   4.50    4.62  2.22  1.00   7.00   6.0
+    ##            skew kurtosis   se
+    ## storeNum*  0.00    -1.21 0.13
+    ## Year       0.00    -2.00 0.01
+    ## Week       0.00    -1.20 0.33
+    ## p1sales    0.42    -0.24 0.56
+    ## p2sales    0.42    -0.24 0.42
+    ## p1price    0.23    -1.49 0.01
+    ## p2price    0.24    -1.46 0.01
+    ## p1prom     2.40     3.76 0.01
+    ## p2prom     1.97     1.88 0.01
+    ## country*  -0.29    -0.81 0.04
+
+For example, we many only want to describe columns 2 and 4:9:
+
+``` r
+describe(store.df[,c(2,4:9)]) # remember indexing uses brackets
+```
+
+    ##         vars    n   mean    sd median trimmed   mad   min    max range
+    ## Year       1 2080   1.50  0.50   1.50    1.50  0.74  1.00   2.00   1.0
+    ## p1sales    2 2080 129.36 25.71 127.00  128.15 26.69 73.00 235.00 162.0
+    ## p2sales    3 2080  95.04 19.36  93.00   94.18 19.27 52.00 162.00 110.0
+    ## p1price    4 2080   2.55  0.30   2.49    2.54  0.44  2.19   2.99   0.8
+    ## p2price    5 2080   2.71  0.33   2.59    2.70  0.44  2.29   3.19   0.9
+    ## p1prom     6 2080   0.12  0.32   0.00    0.02  0.00  0.00   1.00   1.0
+    ## p2prom     7 2080   0.15  0.36   0.00    0.06  0.00  0.00   1.00   1.0
+    ##         skew kurtosis   se
+    ## Year    0.00    -2.00 0.01
+    ## p1sales 0.42    -0.24 0.56
+    ## p2sales 0.42    -0.24 0.42
+    ## p1price 0.23    -1.49 0.01
+    ## p2price 0.24    -1.46 0.01
+    ## p1prom  2.40     3.76 0.01
+    ## p2prom  1.97     1.88 0.01
+
+#### 3.3.3 Best Practice Approach to Inspecting Data
+
+1.  Import your data with `read.csv()` or another appropriate function and check that the importation process gives no errors.
+
+2.  Convert it to a dat frame if needed `(my.data <- data.frame(DATA))` and set column names if needed `names(my.data) <- c(...)`
+
+3.  Examine `dim()` to check that the data farme has the expected number of rows and columns
+
+4.  Use `head()` and `tail()` to check the first few and last few rows for errors. Use `some()` from the `car` package to examine a few sets of random rows.
+
+5.  Check the data frame structure with `str()` to ensure that variable types and values are appropriate. If not, change the type of vars especially for `factor` variables
+
+6.  Run `summary()` and look for any unexpected values, espeically `min/max`
+
+7.  Use `describe()` from psych library. Reconfirm the obs counts and check trimmed mean/skew (if relevant).
