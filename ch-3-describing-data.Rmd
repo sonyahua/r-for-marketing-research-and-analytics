@@ -281,3 +281,205 @@ describe(store.df[,c(2,4:9)]) # remember indexing uses brackets
 6. Run `summary()` and look for any unexpected values, espeically `min/max` 
 
 7. Use `describe()` from psych library. Reconfirm the obs counts and check trimmed mean/skew (if relevant). 
+
+#### 3.3.4 `apply()`
+
+`apply(x=DATA, MARGIN=MARGIN, FUN=FUNCTION)` runs any function that we specify on either each row (margin = 1) or column (margin ==2). FYI, all caps for MARGIN and FUN
+
+For example, suppose we want to find the mean of every column of store.df except for store.df$Store which is a factor. We can `apply()` the `mean()` function to the column margin of the data.
+```{r}
+apply(store.df[,2:9], MARGIN=2, FUN=mean)
+```
+
+We can even use lambda functions within `apply()`. For example, we may want to find the difference between mean and meidan of each variable to flag skew within the data. 
+
+```{r}
+
+apply(store.df[,2:9], MARGIN=2, FUN = function(x){mean(x) - median(x)})
+```
+*Observe* : sales has a larger mean than a median which means the data is somewhat right skewed with a longer right tail in its distribution. This analysis shows that p1 sales is roughly larger than the median by 1 sale per week while the p2 sales is roughly larger than the median by 2 sales per week. There are some weeks with very high sales that pull the mean up. 
+
+There are specialized versions of `apply()` that work similarly with lists and other objects such as `lapply()` and `tapply()`.
+
+```{r}
+# Previous example with apply used instead
+
+mysummary2.df <- data.frame(matrix(NA, nrow=2, ncol=2)) # Must specify matrix to add r x c matrix
+names(mysummary2.df) <- c("Median Sales", "IQR")
+rownames(mysummary2.df) <- names(store.df)[4:5]
+mysummary2.df[, "Median Sales"] <- apply(store.df[,c("p1sales", "p2sales")], 2, median)
+mysummary2.df[, "IQR"] <- apply(store.df[,c("p1sales", "p2sales")], MARGIN=2, FUN=IQR)
+mysummary2.df
+```
+
+### 3.4 Single Variable Visualization
+
+R has many options for graphics dedicated to plotting such as `ggplot2` and `lattice` package, and specialized plots optimized for particular data such as correlation analysis.
+
+4 things to keep in mind about graphics in R:
+
+* R graphics are produced through commands that often seem tedious and requires trial+error
+* Always use a text editor or save the code when working on plot commands as they grow large in code size and we may wight to try slight variants and to copy and paste them for reuse
+* Despite the tediousness, R graphics can be very high quality
+* Once we have code for useful graphics, we can reuse it with modifications. Remember to always check the chart titles, x-axis labels, and y-axis labels when reusing code.
+
+####3.4.1 Historgrams using `hist()`
+
+An important plot for a single continuous var is the histogram, which can be produced with the `hist()` function. Some graphic options:
+
+* `main=` sets the main title
+* `xlab=` sets the x-axis label
+* `ylab=` set the y-axis label
+* `breaks=NUM` sets the number of bins or breaks in the plot
+* `col=` color of the bars. See [`colors()`](http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf) command for a list of built-in color names
+* `freq=F` uses relative frequencies (or density estimates) instead of counts on the y-axis
+* `xaxt="n"` X axis test is set to "none"/ removes your axis
+
+```{r}
+hist(store.df$p1sales)
+```
+```{r}
+# add labels and title
+hist(store.df$p1sales,
+     main = "Product 1 Weekly Sales Frequencies, All Stores",
+     xlab="Product 1 Sales (in Units Per Week)",
+     ylab="Count")
+```
+```{r}
+# add more granularity in the data as the bins are too wide. Also color the bars
+hist(store.df$p1sales,
+     main = "Product 1 Weekly Sales Frequencies, All Stores",
+     xlab="Product 1 Sales (in Units Per Week)",
+     ylab="Count",
+     breaks=30,
+     col="thistle")
+```
+*Observe* 
+
+* the y-axis value for the height of the bars changes according to count. The count depends on the number of bins and sample size. We can make it absolute by using relative frequencies or density estimates instead of counts for each point *This makes the y-axis comparable across different sized samples by standarding the density estimates from 0 to 1*
+
+* the plot has oddly centered labels for the X-axis. Let's remove the axis in order to replace it with a most informative axis. First remove the axis using `xaxt="n"` then call on the `axis()` function 
+
+* `axis()` options: `side=1` alters the x-axis, `side=2` alters y-axis, `at=` tells us where to place our labels, `label=` specificies what labels to put
+
+We can even add a density function to help us see the distribution and skew more clearly using `density()` to estimate desnity values and adding those to the `lines()` command which adds elements to the current plot in the same way we saw above for `axis` command.
+
+* `density()`: `bw=` adjust sthe smoothing
+* `line()`: `lwd=` line width
+```{r}
+hist(store.df$p1sales,
+     main = "Product 1 Weekly Sales Frequencies, All Stores",
+     xlab="Product 1 Sales (in Units Per Week)",
+     ylab="Count",
+     breaks=30,
+     col="thistle",
+     freq=F, # for density estimates
+     xaxt="n") # To remove x-axis
+
+axis(side=1, at=seq(60,300, by=20))
+
+lines(density(store.df$p1sales, bw=9),
+      type="l", col="darkred", lwd=2) # type = l for lines
+```
+
+#### 3.4.2 Boxplots
+
+Boxplots are compact ways to visualize a distribution. `boxplot()` command is straightforward. We can add lables and use `horizontal = T` to rotate boxplots 90 degrees so it's easier to read. 
+
+* median is the center line
+* box represents the IQR from 25th to 75th percentile
+* the outer lines or whiskers are extreme values that are <= 1.5x the width of the box away from the points
+* Invidiaul circles are outliers
+
+Boxplots are even more useful when comparing distributions by some other factor. Using a `~` tilde, we can specify a response variable and explanatory variable. For example,
+
+* How do different stores compare on sales of product 2?
+* How do P2 sales differ in relation to in-store promotion?
+* How do P2 sales differ by price? 
+
+We can also use `axis()` to replace the x or y axis with one that is more informative. 
+
+
+```{r}
+# p2 sales
+boxplot(store.df$p2sales, main = "Weekly sales of P2, All stores", xlab= "Weekly Sales", ylab="P2",
+         horizontal=T)
+```
+##### How do different stores compare on sales of product 2?
+```{r}
+
+# copy previous code and modify
+
+boxplot(p2sales ~ storeNum, data= store.df, main = "Weekly sales of P2, All stores", xlab= "Weekly Sales", 
+        ylab="Store Number", horizontal=T, col="lightblue")
+```
+##### How do P2 sales differ in relation to in-store promotion?
+```{r}
+
+```
+
+```{r}
+# add our own axis to Yes No
+boxplot(p2sales ~ p2prom, data= store.df, main = "Weekly sales of P2, All stores", xlab= "Weekly Sales", 
+        ylab="Promotion (Y/N)", horizontal=T, col="azure", yaxt="n")
+# Modify y-axis
+axis(side=2, at=c(1,2), labels=c("No","Yes")) # at location starts from the bottom to top
+
+
+```
+##### How do P2 sales differ by price? 
+```{r}
+boxplot(p2sales ~ p2price, data= store.df, main = "Weekly sales of P2 by Price Point", xlab= "Weekly Sales", 
+        ylab="Price Point ($)", horizontal=T, col="lightyellow")
+```
+
+#### QQ Plots to Check Normality
+
+QQ plots (Quantile-quantile) are a quick way to check one's dat aagainst a distribution that we think it should come from. For example, in order to interpret correlation coefficients *r*, it needs to be interpreted under an assumption that data are normally distributed. A QQ plot can confirm that the distribution is normal by *plotting observed quantiles of the data against the quantiles that would be expected from a normal distribution*.
+
+`qqnorm()` command compares data vs. normal distribution. 
+`qqline()` adds a diagonal line for easier reading.
+
+There's common patterns that appear in QQ plots and knowing [how to interpret them](http://emp.byui.edu/BrownD/Stats-intro/dscrptv/graphs/qq-plot_egs.htm) is worthwile. 
+
+```{r}
+qqnorm(store.df$p1sales)
+qqline(store.df$p1sales)
+```
+*Observe* The tails of the distribution bow away from the line, showing the distribution is skewed and there are heavier tails possibly due to outliers
+
+If we are using models or stat functions that assume normally distributed data, we might want to transform our data then check if the transformation provides a normal distribution by QQ plotting it agian after transformation. A common pattern in marketing data is a logarithmic distribution and using a `log()` transformation may help with bring it to a more normal distribution. 
+```{r}
+qqnorm(log(store.df$p1sales))
+qqline(log(store.df$p1sales))
+```
+*Observe* After log transformation, the sales figures are much better aligned to a normal distribution although there is still some skew
+
+#### 3.4.4 Cumulative Distribution 
+
+Another useful univariate plot is the **[ECDF](http://docs.battlemesh.org/v8/ecdf.html)** or empirical cumulative distribution function. ECDF's show the cumulative proportion of data values in our sample. It's an easy way to inspect a distribution and read off percentile values. 
+
+`plot()` can only make a few plot types on its own and otherwise need to be given an object that includes more info such as X and Y values. Many R functions produce objects automatically that are suitable as input for `plot()`. 
+
+We'll plot the ECDF of p1 sales thru a few steps:
+
+1) Use `ecdf()` to find the ecdf of hte data
+2) Wrap `plot()` around that adding options such as titles
+3) Modify labels on the axis such as relabeling hte proportions as percentiles. The `paste()` function combines a number vector with the "%" symbol to make each label. 
+4) Add lines at specific percentiles using the `abline()` function to add vertical and horizontal lines at desired percentiles. We don't have to tell R the exact value at which to point the line. Instead we use `quantile( , pr=)` to find it. 
+
+ECDF's are useful for highling discontinuities in the data, long tails, and specific points of interest. 
+
+```{r}
+plot(ecdf(store.df$p1sales),
+     main="Cumulative distrib. of P1 Weekly Sales",
+     ylab="Cumulative Proportion",
+     xlab=c("P1 weekly sales, all stores", "90% of weeks sold <= 171 units"),
+     yaxt="n")
+
+axis(side=2, at=seq(0,1,by=0.1), las=1, labels=paste(seq(0,1,by=0.1),"%", sep=""))
+
+abline(h=0.9, lty=3) # for horizontal line; "lty=3" for dotted line type
+abline(v=quantile(store.df$p1sales, pr=0.9), lty=3)  # find 90% percentile of p1sales using quantile()
+```
+
