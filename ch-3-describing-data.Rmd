@@ -483,3 +483,27 @@ abline(h=0.9, lty=3) # for horizontal line; "lty=3" for dotted line type
 abline(v=quantile(store.df$p1sales, pr=0.9), lty=3)  # find 90% percentile of p1sales using quantile()
 ```
 
+#### 3.4.5 Language Brief: by() and aggregate()
+
+How can we break out data by factors and summarize it similar to cross-tabs or pivot tables? We can summarize by a factor within the data itself using `by()` and `aggregate()`. 
+
+`by(data=DATA, INDICES=INDICES, FUN=FUNCTION)`: `INDICES` indicates the grouping factor to divide data by. Each factor applies the function FUN to its group. A limitation of `by()` is that the result is easy to read but not structured for reuse. To save results as data to use for other purposes such as plotting, consider using `aggregate()`
+
+`aggregate(x=DATA, by=BY, FUN=FUNCTION)`: applies a particular function (FUN) according to division of the data specified by a factor 
+`(by)`. This provides a data frame which we can save for reuse. 
+
+For example, we want to find the average sales of P1 by store:
+```{r}
+# Using positional arguments
+head(by(store.df$p1sales, store.df$storeNum, mean))
+
+aggregate(store.df$p1sales, list(store.df$storeNum), mean)  # BY= must be a list
+
+```
+
+```{r}
+# To group it by more than one factor, use a list() of factors
+
+by(store.df$p1sales, INDICES=list(store.df$storeNum, store.df$Year), mean)
+```
+
