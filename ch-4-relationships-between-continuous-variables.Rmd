@@ -1,0 +1,133 @@
+---
+title: "ch-4-relationships-between-continuous-variables"
+author: "Sonya Hua"
+date: "September 4, 2017"
+output: rmarkdown::github_document
+---
+
+The most important insights in marketing analysis often come from undrstanding relationships between variables. Identifying these kinds of relationships helps marketers understand how to reach customers more effectively. For example, if people who live closer to a store visit more frequently and buy more, then an obvious strategy would be to send adivertisements to people who live in the area. 
+
+In this chapter we focus on understanding pair-wise relationships between variables in multivariate data, and examine how to visualize the relationships and compute statistics that describe their associations. These are the most important ways to assess relationships between continuous variables. The first step in any analylsis is to exploer the data and its basic properties including the relationships among pairs of variables before model-building. 
+
+### 4.1 Simulating Customer Data (Retailer Data with Online/In-store sales, Survey responses)
+
+We simulate a data set that describes each customer of a multi-channel retailer (Online & In-store) and their transactions for 1 year. This data also includes a subset of custoemrs for whom we have survey data on product satisfaction. It contains a data set of 1000 customers. This data is typical of what one might sample from a company's CRM system. 
+
+```{r}
+set.seed(21821)
+ncust <- 1000 
+cust.df <- data.frame(cust.id=as.factor(c(1:ncust))) # customer id's are factors
+
+
+```
+
+
+**Customer Id**- unique identifier per customer
+
+**Age** - sampling from a random normal distribution with mean 35 and sd =5
+
+**Credit Score** - sampling from a rnorm where its mean of the distribution is related to the customer's age, with older customers having higher credit scores on average
+
+**Email**-  (Y/N) indicating whether the customer has an email on file using the sample() function
+
+**Distance to Store (Miles) **- follows expontential of the normal distribution. This gives distances that are all positive with many distances that are relatively close to the nearest store and fewer that are far from a store. aka. lognormal distribution using `rlnorm()`
+```{r}
+cust.df$age <- rnorm(n=ncust, mean=35, sd=5)
+cust.df$credit.score <- rnorm(n=ncust, mean=3*cust.df$age + 620, sd=50)
+
+cust.df$email <- factor(sample(c("yes","no"), size=ncust, replace=TRUE, prob=c(0.8,0.2))) # Factor var with yes, no
+
+cust.df$distance.to.store <- rlnorm(n=ncust, meanlog=2, sdlog=1.2)
+
+summary(cust.df)
+
+```
+
+**/# of Online visits** - follow a negative binomial distribution - a discrete distribution often used to model counts of events over time. Like the log normal distribution, the negative binomial distribution generates positive values and a long right-hand tail, meaning that most customers make relatively few visits and a few customers make many visits. We use `rnbinom()` function.
+
+* The `size` argument sets the degree of dispersion (variation) for the samples
+* We add ~15 online visits for customers who have an email on file using `ifelse()` to generate a vector 0 or 15 based on whether they have an email on file
+* We add/subtract visits from the target mean based on the customer's age relative to the sample median since customers who are younger tend to make more online visits
+
+**/# of Online Transactions **- Per online visit, we assume there's a 30% probability of placicng an order (1) vs. not (0). 
+
+**Online spend** - We assume that amount spent in those orders are lognormally distributed (`exp(rnorm())`). The random value for amount spent per transaction (follows lognormal distribution with mean 3, sd=0.1) is multiplied by the # of online transactions in order to get the total amount spent. 
+```{r}
+cust.df$online.visits <-rnbinom(ncust, size=0.3, mu=15 + ifelse(cust.df$email=="yes",15,0) - 0.7 * (cust.df$age-median(cust.df$age)))
+
+cust.df$online.trans <- rbinom(ncust, size=cust.df$online.visits, prob=0.3)
+cust.df$online.spend <- rlnorm(ncust, meanlog=3, sdlog=0.1) * cust.df$online.trans
+
+#Best practice to check data along the way
+summary(cust.df)
+```
+
+
+**Store Transactions (In-store)** - We assume that transcations follow a negative binomial distribution with lower average number of visits for customers who live farther away
+
+**Store Spend (In-store)** - lognormally distributed simply multiplied by the number of transactions
+
+```{r}
+cust.df$store.trans <- rnbinom(ncust, size=5,
+                               mu=3 / sqrt(cust.df$distance.to.store))
+
+cust.df$store.spend <- rlnorm(ncust, mean=3.5, sd=0.4) * cust.df$store.trans
+
+summary(cust.df)
+```
+
+
+**Overall Satisfaction** - It's common for reatilers to survey their customers and record responses in the CRM system. To simulate survey responses, we assume that each customer has an unobserved or pyschological construct of overall satisfaction with the brand. We generate this overall satisfaction from a normal distribution (m=3.1, sd=0.7). It's not directly observable. Instead the survey collects info on 2 items: service satisfaction and selection of products satisfaction. We assume that customers' responses to the survey items are based on unobserved levels of satisfaction overall (aka "halo" in survey response) + the specific levels of satisfaction with the service and product selection
+
+* To create such a score from a halo variable, we add `sat.overall` (the halo) to a random value specifci to the item, drawn using `rnorm()`. Because the survey responese are on a discrete, ordinal scale (i.e. "Very Satisfied" to "Very Unsatisfied"), we convert our continous random values to discrete integers using `floor()`. 
+
+* We use `cbind()` in our summary() function to temporarily combine our two vectors of data into a *matrix* so that we can get a combined summary with a single line of code. 
+
+```{r}
+# create temporary variables to be assigned to data frame vars later
+sat.overall <- rnorm(ncust, mean=3.1, sd=0.7)
+sat.service <- floor(sat.overall + rnorm(ncust, mean=0.5, sd=0.4))
+sat.selection <- floor(sat.overall + rnorm(ncust, mean=-0.2, sd=0.6))
+
+summary(cbind(sat.overall, sat.service, sat.selection))
+```
+*Observe* We have min/max values we need to adjust
+
+We will replace values that are greater than 5 with 5, values that are < 1 with 1. This enforces the *floor* and *ceiling* effects often noted in survey response literature. 
+```{r}
+sat.service[sat.service > 5] <- 5
+sat.service[sat.service < 1] <- 1
+sat.selection[sat.selection <1] <- 1
+sat.selection[sat.selection >5] <- 5
+
+# check
+summary(cbind(sat.service, sat.selection))
+```
+
+**No Response (T/F)** - Some customers do not respond to surveys.We will eliminate the simulated answers for a subset of responedents who are modeled as "not answering". We do this by create a var of T/F values called `no.response` and then assign a value of NA for the survey response for customers whose `no.response` is TRUE. We model non.response as a function of age, with higher probability of not responding to the survey for *older customers*. 
+
+```{r}
+no.response <- as.logical(rbinom(ncust, size=1, prob=cust.df$age/100))
+summary(no.response)
+
+# use the T/F in no.response to clear some of the survey satisfaction values for some customers
+sat.selection[no.response] <- NA
+sat.service[no.response] <- NA
+
+# check
+summary(cbind(sat.service, sat.selection))
+```
+*Observe* There are 324 NA's according to summary.
+
+```{r}
+# Add the survery responses to cust.df
+
+cust.df$sat.service <- sat.service
+cust.df$sat.selection <- sat.selection
+
+summary(cust.df)
+```
+*Observe* the data set is now complete and ready for analysis 
+
+### 4.2 Exploring Associations b/w Variables via Scatterplots
+
