@@ -131,3 +131,144 @@ summary(cust.df)
 
 ### 4.2 Exploring Associations b/w Variables via Scatterplots
 
+Let's begin by exploring the relationship between each customer's age and credit score using `plot(x,y)`.
+
+##### Is there a relationship between customer's age and credit score?
+
+```{r}
+plot(x=cust.df$age, cust.df$credit.score)
+```
+*Observe*: 
+
+* There is a large mass of customers in the center of the plot at ~35 y.o and credit score ~725
+* There are fewer customers at the margins. There's not many younger customers with very high credit scores, nor older customers with very low scores. This suggests an association between age and credit score
+
+The default settings in `plot()` produces a quick-and-dirty plot that's useful when exploring data by ourselves. R looks at what data types you're trying to plot, and based on the data type, produce a lower-level plotting function known as a *method*. For example, if we plot a data frame, R will use `plot.data.frame()` instead of `plot.default()` in the backend. Hence, it's important to correct for our data types before plotting to avoid any unhelpful plots. 
+
+For more info, type `methods(plot)
+```{r}
+
+# types of plots based on data types
+methods(plot)
+```
+
+
+If we present the plot to others, best practice is to provide more informative labels for the axes and chart titles as well as legends, coloring, etc: 
+
+`xlim and ylim` sets a range for each axis. 
+`abline(v=)` sets a vertical line based on a function or number
+`abline(h=)` sets a horizontal line based on a function or number
+`points()` adds specific points
+`lines()` adds a set of lines by coordinates
+`legend()` adds a legend
+
+```{r}
+# enhance our plot with titles, labels, ablines
+
+plot(cust.df$age, cust.df$credit.score,
+     col="blue",
+     xlim=c(15,55), ylim=c(500,900),
+     main="Active Customers as of June 2014",
+     xlab="Customer Age (years)",
+     ylab="Customer Credit Score")
+
+abline(h=mean(cust.df$credit.score), col="dark blue", lty="dotted")
+abline(h=mean(cust.df$age), col="dark blue", lty="dotted")
+
+```
+
+##### Do customers who buy more online, buy less in-stores?
+
+We start by plotting online sales ~ in-store sales. We'll use `cex` option which scales down the plotted points to 0.7 of their default size so that we can see the points a bit more clearly.
+
+```{r}
+plot(cust.df$store.spend, cust.df$online.spend,
+     main="Customers as of June 2014",
+     xlab="Prior 12 months in-store sales ($)",
+     ylab="Prior 12 months online sales ($)",
+     cex=0.7)
+```
+*Observe* 
+
+* The distribution is skewed which is common in behavioural data such as sales or transaction counts; most customers purchase rarely so the data is dense near zero. 
+* A lot of points along the axes meaning there are a large number of customers who din't buy anything on one of the two channels
+* A smaller number of customers who purchase fairly large amounts per channel
+
+Because of the skewed data, we do not have a good answer to our question about the relationship between online and in-store sales. Let's investigate further with a histograpm of only in-store sales:
+
+```{r}
+hist(cust.df$store.spend,
+     breaks=(0:ceiling(max(cust.df$store.spend/10)))*10,
+             main="Customers as of June 2014",
+             xlab="Prior 12 months in-store sales ($)",
+             ylab="Count of customers")
+```
+*Observe* 
+
+* A large number of customers bought nothing in-store (about 400 customers out of 1000)
+* The distribution of sales among those who buy has a mode ~$20
+* There is a long right tail with a few customers whose annual spend was high (to $500)
+
+Such distributions are typical of spending and transaction counts in customer data
+
+##### Is the propensity to buy online vs. in-store related to our email efforts?
+
+(as reflected by whether or not a customer has an email address on file) 
+
+We will add the `email` dimension to the plot by coloring in the points for customers with email=Y. To do this, we use `plot()` arguments that allows us to draw different colors `col=` and sympbols for the points `pch=`. 
+
+1) We first declare vectors for the color and point types
+
+2) Convert the variable `email` to numeric values or directly index
+
+3) Use the numeric values to select colors from the color vector by indexing the color vector based on the numeric values
+
+4) Pass the new color vector to the `col` option in `plot()`. Note the vector must be the same length as the data else R will recylce the color vector. This can be difficult to get right in practice, so practice! 
+
+```{r}
+#Step 1
+my.col <- c("black","green3")
+my.pch <- c(1,19) # R's sympbols for solid and open circles. FMI, see ?points.
+
+#Step 2 & 3
+my.col2 <- my.col[cust.df$email]
+head(my.col2) # Preview
+```
+```{r}
+#Step 4
+
+plot(cust.df$store.spend, cust.df$online.spend,
+     cex=0.7,
+     col=my.col2, pch=my.pch,
+     main="Customers as of June 2014",
+     xlab="Prior 12 months in-store sales($)",
+     ylab="Prior 12 months online sales ($)")
+
+
+```
+
+#### 4.2.3 Adding a Legend to the Plot using `legend()`
+
+`legend`(): `x=LOCATION` sets the location of the legend on the plot, `legend` argument is a vector of labels that we want to include in the legend, `col=` specifies color in legend, `pch=` specifies symbols
+
+Although the code to create the legend is compact, it's a hassle to track the deails of labels, colors, and sympbols. Best practice is to define the argument values in a reusable way (declared variables). An alternative mthod would be to invest in learning a specialized graphics package such as `lattice` or `ggplot2`.
+
+```{r}
+plot(cust.df$store.spend, cust.df$online.spend,
+     cex=0.7,
+     col=my.col2, pch=my.pch,
+     main="Customers as of June 2014",
+     xlab="Prior 12 months in-store sales($)",
+     ylab="Prior 12 months online sales ($)")
+
+legend( x="topright",
+        legend=paste("email on file:", levels(cust.df$email)),
+        col=my.col,
+        pch=my.pch)
+
+```
+*Observe* It's still difficult to see whether there is a different relatiopnsihp between instore vs. online purchases for those with/without emails on file due to the heavy skew in sales figures. 
+
+A common solution for such scatterplots with skewed data is to plot the dat aon a *logarithmic scale* with the `log=` argument of `plot()`. Set `log="x"` to plot the x-axis on the log scale, `log="y"` for the y-axis, or `log="xy"` for both axes
+
+
