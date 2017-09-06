@@ -3,6 +3,10 @@ ch-4-relationships-between-continuous-variables
 Sonya Hua
 September 4, 2017
 
+``` r
+knitr::opts_chunk$set(fig.width=8, fig.height=6, echo = TRUE, fig.align="center") 
+```
+
 The most important insights in marketing analysis often come from undrstanding relationships between variables. Identifying these kinds of relationships helps marketers understand how to reach customers more effectively. For example, if people who live closer to a store visit more frequently and buy more, then an obvious strategy would be to send adivertisements to people who live in the area.
 
 In this chapter we focus on understanding pair-wise relationships between variables in multivariate data, and examine how to visualize the relationships and compute statistics that describe their associations. These are the most important ways to assess relationships between continuous variables. The first step in any analylsis is to exploer the data and its basic properties including the relationships among pairs of variables before model-building.
@@ -251,7 +255,7 @@ Let's begin by exploring the relationship between each customer's age and credit
 plot(x=cust.df$age, cust.df$credit.score)
 ```
 
-![](ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-9-1.png) *Observe*:
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-10-1.png" style="display: block; margin: auto;" /> *Observe*:
 
 -   There is a large mass of customers in the center of the plot at ~35 y.o and credit score ~725
 -   There are fewer customers at the margins. There's not many younger customers with very high credit scores, nor older customers with very low scores. This suggests an association between age and credit score
@@ -295,7 +299,7 @@ abline(h=mean(cust.df$credit.score), col="dark blue", lty="dotted")
 abline(h=mean(cust.df$age), col="dark blue", lty="dotted")
 ```
 
-![](ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-11-1.png)
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-12-1.png" style="display: block; margin: auto;" />
 
 ##### Do customers who buy more online, buy less in-stores?
 
@@ -309,7 +313,7 @@ plot(cust.df$store.spend, cust.df$online.spend,
      cex=0.7)
 ```
 
-![](ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-12-1.png) *Observe*
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-13-1.png" style="display: block; margin: auto;" /> *Observe*
 
 -   The distribution is skewed which is common in behavioural data such as sales or transaction counts; most customers purchase rarely so the data is dense near zero.
 -   A lot of points along the axes meaning there are a large number of customers who din't buy anything on one of the two channels
@@ -325,7 +329,7 @@ hist(cust.df$store.spend,
              ylab="Count of customers")
 ```
 
-![](ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-13-1.png) *Observe*
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-14-1.png" style="display: block; margin: auto;" /> *Observe*
 
 -   A large number of customers bought nothing in-store (about 400 customers out of 1000)
 -   The distribution of sales among those who buy has a mode ~$20
@@ -370,7 +374,7 @@ plot(cust.df$store.spend, cust.df$online.spend,
      ylab="Prior 12 months online sales ($)")
 ```
 
-![](ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-15-1.png)
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-16-1.png" style="display: block; margin: auto;" />
 
 #### 4.2.3 Adding a Legend to the Plot using `legend()`
 
@@ -392,6 +396,65 @@ legend( x="topright",
         pch=my.pch)
 ```
 
-![](ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-16-1.png) *Observe* It's still difficult to see whether there is a different relatiopnsihp between instore vs. online purchases for those with/without emails on file due to the heavy skew in sales figures.
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-17-1.png" style="display: block; margin: auto;" /> *Observe* It's still difficult to see whether there is a different relatiopnsihp between instore vs. online purchases for those with/without emails on file due to the heavy skew in sales figures.
 
 A common solution for such scatterplots with skewed data is to plot the dat aon a *logarithmic scale* with the `log=` argument of `plot()`. Set `log="x"` to plot the x-axis on the log scale, `log="y"` for the y-axis, or `log="xy"` for both axes
+
+Caution: log(0) is undefined. To circumvent this issue, plot `*...spend + 1*` to avoid error message. The axes are now logarithmic. i.e. the distance from 1 to 10 is the same as 10-100.
+
+``` r
+plot(cust.df$store.spend + 1, cust.df$online.spend + 1,
+     cex=0.7,
+     col=my.col2, pch=my.pch,
+     main="Customers as of June 2014",
+     xlab="Prior 12 months in-store sales($)",
+     ylab="Prior 12 months online sales ($)",
+     log="xy")
+
+legend( x="topright",
+        legend=paste("email on file:", levels(cust.df$email)),
+        col=my.col,
+        pch=my.pch)
+```
+
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-18-1.png" style="display: block; margin: auto;" /> *Observe*: \* There is little or no association between online and instore sales as the points seem to be random with no clear patterns \* Thus, there is no eveidence here to suggest that online sales cannibalized in-store sales. \* Customers with no email address on file show slighly lower online sales than those with addresses; there's somewaht more black circles in the lower half othe plot than the upper half. If we've been sending email promotions to customers, then this usggests that the promotions might be working. \*An experiment to confirm that hypothesis could be an appropriate next step
+
+### 4.3 Combining Plots in a Single Graphics Object
+
+R an produce a single graphic that consists of multiple plots. We do this by telling R that we want multiple plots in a single graphical object with the `par(mfrow=...` command, then plot each one with `plot()` as usual:
+
+``` r
+par(mfrow=c(2,2)) # set of query graphical parameters
+
+plot(cust.df$distance.to.store, cust.df$store.spend,
+     main="Store Spend vs. Distance to Store")
+plot(cust.df$distance.to.store, cust.df$online.spend,
+      main="Online Spend vs. Distance to Store")
+
+plot(cust.df$distance.to.store+1, cust.df$store.spend+1,
+     main="Store Spend vs. Distance to Store (Log)", log="xy")
+plot(cust.df$distance.to.store+1, cust.df$online.spend+1,
+      main="Online Spend vs. Distance to Store (Log)", log="xy")
+```
+
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-19-1.png" style="display: block; margin: auto;" /> *Observe*:
+
+-   There may be a negative relationship between customers' distances to the nearest store and in-store spending.
+-   There doesn't appear to be a relationship between distance to store and online spend
+
+We can return to a single plot layour by setting `par(mfrow=c(1,1))`
+
+### 4.4 Scatterplot Matrices using `pairs(), scatterplotMatrix(), and gpairs()`
+
+It's best practice to examine scatterplots between all pairs of variables before moving on to more complex analyses. R provides the `pairs(formula, data)` which makes a scatter plot matrix for every combination of variables. We might want to select quantitative variables only else it will throw an error
+
+`pair()`: the `formula=` argument is composed with a tilde "~" followed by the variables to include, separated by "+". If we want to transform a variable, include the math in the formula. For example, `log(online.spend)`.
+
+We can see relationships between variables quickly in a scatterplot matrix:
+
+``` r
+pairs(formula = ~age+credit.score+email+distance.to.store+online.visits+online.trans+online.spend+store.trans+store.spend,
+      data=cust.df)
+```
+
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-20-1.png" style="display: block; margin: auto;" />
