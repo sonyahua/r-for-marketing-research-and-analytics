@@ -4,7 +4,10 @@ Sonya Hua
 September 4, 2017
 
 ``` r
+# set global display parameters
+library(knitr)
 knitr::opts_chunk$set(fig.width=8, fig.height=6, echo = TRUE, fig.align="center") 
+opts_chunk$set(out.width='750px', dpi=200)
 ```
 
 The most important insights in marketing analysis often come from undrstanding relationships between variables. Identifying these kinds of relationships helps marketers understand how to reach customers more effectively. For example, if people who live closer to a store visit more frequently and buy more, then an obvious strategy would be to send adivertisements to people who live in the area.
@@ -255,7 +258,7 @@ Let's begin by exploring the relationship between each customer's age and credit
 plot(x=cust.df$age, cust.df$credit.score)
 ```
 
-<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-10-1.png" style="display: block; margin: auto;" /> *Observe*:
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-10-1.png" width="750px" style="display: block; margin: auto;" /> *Observe*:
 
 -   There is a large mass of customers in the center of the plot at ~35 y.o and credit score ~725
 -   There are fewer customers at the margins. There's not many younger customers with very high credit scores, nor older customers with very low scores. This suggests an association between age and credit score
@@ -299,7 +302,7 @@ abline(h=mean(cust.df$credit.score), col="dark blue", lty="dotted")
 abline(h=mean(cust.df$age), col="dark blue", lty="dotted")
 ```
 
-<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-12-1.png" style="display: block; margin: auto;" />
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-12-1.png" width="750px" style="display: block; margin: auto;" />
 
 ##### Do customers who buy more online, buy less in-stores?
 
@@ -313,7 +316,7 @@ plot(cust.df$store.spend, cust.df$online.spend,
      cex=0.7)
 ```
 
-<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-13-1.png" style="display: block; margin: auto;" /> *Observe*
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-13-1.png" width="750px" style="display: block; margin: auto;" /> *Observe*
 
 -   The distribution is skewed which is common in behavioural data such as sales or transaction counts; most customers purchase rarely so the data is dense near zero.
 -   A lot of points along the axes meaning there are a large number of customers who din't buy anything on one of the two channels
@@ -329,7 +332,7 @@ hist(cust.df$store.spend,
              ylab="Count of customers")
 ```
 
-<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-14-1.png" style="display: block; margin: auto;" /> *Observe*
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-14-1.png" width="750px" style="display: block; margin: auto;" /> *Observe*
 
 -   A large number of customers bought nothing in-store (about 400 customers out of 1000)
 -   The distribution of sales among those who buy has a mode ~$20
@@ -374,7 +377,7 @@ plot(cust.df$store.spend, cust.df$online.spend,
      ylab="Prior 12 months online sales ($)")
 ```
 
-<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-16-1.png" style="display: block; margin: auto;" />
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-16-1.png" width="750px" style="display: block; margin: auto;" />
 
 #### 4.2.3 Adding a Legend to the Plot using `legend()`
 
@@ -396,7 +399,7 @@ legend( x="topright",
         pch=my.pch)
 ```
 
-<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-17-1.png" style="display: block; margin: auto;" /> *Observe* It's still difficult to see whether there is a different relatiopnsihp between instore vs. online purchases for those with/without emails on file due to the heavy skew in sales figures.
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-17-1.png" width="750px" style="display: block; margin: auto;" /> *Observe* It's still difficult to see whether there is a different relatiopnsihp between instore vs. online purchases for those with/without emails on file due to the heavy skew in sales figures.
 
 A common solution for such scatterplots with skewed data is to plot the dat aon a *logarithmic scale* with the `log=` argument of `plot()`. Set `log="x"` to plot the x-axis on the log scale, `log="y"` for the y-axis, or `log="xy"` for both axes
 
@@ -417,7 +420,7 @@ legend( x="topright",
         pch=my.pch)
 ```
 
-<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-18-1.png" style="display: block; margin: auto;" /> *Observe*: \* There is little or no association between online and instore sales as the points seem to be random with no clear patterns \* Thus, there is no eveidence here to suggest that online sales cannibalized in-store sales. \* Customers with no email address on file show slighly lower online sales than those with addresses; there's somewaht more black circles in the lower half othe plot than the upper half. If we've been sending email promotions to customers, then this usggests that the promotions might be working. \*An experiment to confirm that hypothesis could be an appropriate next step
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-18-1.png" width="750px" style="display: block; margin: auto;" /> *Observe*: \* There is little or no association between online and instore sales as the points seem to be random with no clear patterns \* Thus, there is no eveidence here to suggest that online sales cannibalized in-store sales. \* Customers with no email address on file show slighly lower online sales than those with addresses; there's somewaht more black circles in the lower half othe plot than the upper half. If we've been sending email promotions to customers, then this usggests that the promotions might be working. \*An experiment to confirm that hypothesis could be an appropriate next step
 
 ### 4.3 Combining Plots in a Single Graphics Object
 
@@ -437,7 +440,7 @@ plot(cust.df$distance.to.store+1, cust.df$online.spend+1,
       main="Online Spend vs. Distance to Store (Log)", log="xy")
 ```
 
-<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-19-1.png" style="display: block; margin: auto;" /> *Observe*:
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-19-1.png" width="750px" style="display: block; margin: auto;" /> *Observe*:
 
 -   There may be a negative relationship between customers' distances to the nearest store and in-store spending.
 -   There doesn't appear to be a relationship between distance to store and online spend
@@ -457,4 +460,383 @@ pairs(formula = ~age+credit.score+email+distance.to.store+online.visits+online.t
       data=cust.df)
 ```
 
-<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-20-1.png" style="display: block; margin: auto;" />
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-20-1.png" width="750px" style="display: block; margin: auto;" /> *Observe*
+
+-   There is a strong linear association between online.visits and online.trans. Customers who visit the website more frequently make more online transactions.
+-   Customers with a higher number of online transacations have higher total online spending
+-   Customers with more in-store transactions also spend more in-store
+
+In addition to the formula notation above, we can also pass a dat aframe directly to `pairs()` and when we do that, `pairs()` creates a scatter plot matrix including all the columns in our df.
+
+``` r
+pairs(cust.df[,c(2:10)])
+```
+
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-21-1.png" width="750px" style="display: block; margin: auto;" />
+
+Best practice is to creat R code that might be re-used in the futre.
+
+#### 4.4.2 `scatterplotMatrix()`
+
+`scatterplotMatrix()` adds additional features to the matrix such as sincluding smoothed lines on scatter plots and univariate histograms on the diagonal which shows us the distribution per variable. The *green lines* show linear fit lines. The *red lines* show smoothed fit lines. the *dashed red lines* show the confidence interval band.
+
+`suppressWarnings`: Suppresses warning signs of a function
+
+``` r
+library(car) # for "companion to applied regression"
+
+suppressWarnings(scatterplotMatrix(formula= ~age+credit.score+email+distance.to.store+online.visits+
+                    online.spend+online.trans+store.trans+store.spend,
+                  data=cust.df, 
+                  diagonal="histogram",
+                  cex.main="1.5",
+                  cex.labels=1  # Increase label size
+                  ))
+```
+
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-22-1.png" width="750px" style="display: block; margin: auto;" /> *Observe*:
+
+-   The smoothed lines on the bivariate scatter plots suggest the extent to which associations are linear.
+-   The smoothed line on the plot of age vs. distance to store is nearly flat and shows that there's no linear association between those vars
+-   All of the vars execept age and credit score are highly left skewed (median in the left).
+-   Email is a binary factor and is not suitable for a scatterplot. We will need another way to plot email (pref. boxplot)
+
+#### `gpairs()`
+
+For Generalized Pair Plots, part of the gpairs package, produces a scatterplot matrix that includes better visualizations for both discrete and continuous vars. It does not accept formula input, so we select the columns to include by positional indeexing.
+
+For ex, if we want to look more closely at the relationship between email, and online vsitis, online trans, online spend, we can use `gpairs()`:
+
+``` r
+library(gpairs)
+gpairs(cust.df[,c(2:10)])  # For some reason, it's not working
+```
+
+    ## Loading required package: grid
+
+    ## Loading required package: lattice
+
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-23-1.png" width="750px" style="display: block; margin: auto;" />
+
+### 4.5 Correlation Coefficients
+
+Although scatterplots provide a lot of visual information, correlation coefficients can assess the relationship between each pair with a single number. *Covariance* measures the relationship between 2 variables. *Correlation Coefficient* is standardized covariance in the data's units by scaling the covaraince by the standard derviation. Aka *Pearson product-moment correlation coefficient*.
+
+`cov(x,y)` measures covariance between x and y `cor(x,y)` measures correlation coefficient between -1 and 1
+
+In marketing, we'll often use *Cohen's Rules of Thumb* to decide whether *r* signifies an important correlation between two vars. Cohen's interpretation of a large effect was such that an association would be easily noticed by casual observers. A small effect would require careful measuremnets to detect yet might be inmportant to our understanding and statistical models.
+
+-   r &lt;= 0.1 should be considered a small or weak association
+-   r &lt;= 0.3 is medium association
+-   r &gt;=0.5 is strong or large association.
+
+Interpetation of *r* depends on the assumpation that vars are \*normally distributed. If vars are not normal, then these thresholds do not apply. In such cases when data is skewed, it's helpful to transform our vars to normal distributions BEFORE interpreting.
+
+``` r
+# Covariance
+cov(cust.df$age, cust.df$credit.score)
+```
+
+    ## [1] 63.23443
+
+``` r
+# Correlation
+cor(cust.df$age, cust.df$credit.score)
+```
+
+    ## [1] 0.2545045
+
+``` r
+# Equivalent
+cov(cust.df$age, cust.df$credit.score) / (sd(cust.df$age)*sd(cust.df$credit.score))
+```
+
+    ## [1] 0.2545045
+
+#### 4.5.1 Correlation Tests
+
+#### Is the correlation between age and credit score (r=0.25) statistically significant?
+
+We can use cor.test() to find out:
+
+``` r
+cor.test(cust.df$age, cust.df$credit.score)
+```
+
+    ## 
+    ##  Pearson's product-moment correlation
+    ## 
+    ## data:  cust.df$age and cust.df$credit.score
+    ## t = 8.3138, df = 998, p-value = 3.008e-16
+    ## alternative hypothesis: true correlation is not equal to 0
+    ## 95 percent confidence interval:
+    ##  0.1955974 0.3115816
+    ## sample estimates:
+    ##       cor 
+    ## 0.2545045
+
+*Observe*: The 95% confidence interval is r=0.196 to 0.312. Because the CI does not include 0 (and thus has pvalue &lt; 0.05), the association is statistically signifciant. Such a correlation showing a medium-sized effect and sttaistical significance should not be ignored in subsequent analyses
+
+#### 4.5.2 Correlation Matrix
+
+We can compute correlations between all pairs x, y at once as a *correlation matrix*. Such a matrix shows r=1 on the diagonal because cor(x,x) = 1. It's also symmetric because cor(x,y) = cor(y,x). We compute a correlation matrix by passing multiple vars to `cor()`
+
+Note: `cor()` will not compute vars with NA's so we can use `use="complete.obs"` to ignore NA's and compute the var.
+
+``` r
+cor(cust.df[,c(2,3,5:12)], use="complete.obs")
+```
+
+    ##                           age credit.score distance.to.store online.visits
+    ## age                1.00000000   0.27384005        0.04606521   -0.06334468
+    ## credit.score       0.27384005   1.00000000       -0.03444605   -0.04337523
+    ## distance.to.store  0.04606521  -0.03444605        1.00000000   -0.02680514
+    ## online.visits     -0.06334468  -0.04337523       -0.02680514    1.00000000
+    ## online.trans      -0.07282280  -0.03041161       -0.03046099    0.98349553
+    ## online.spend      -0.06857108  -0.03344978       -0.03224989    0.97645451
+    ## store.trans        0.01917930   0.07147923       -0.28777128   -0.01833510
+    ## store.spend       -0.01101162   0.07319630       -0.25249002   -0.06022874
+    ## sat.service       -0.05846361  -0.05095454        0.02561875   -0.01614200
+    ## sat.selection     -0.07411506  -0.02350937        0.01293211   -0.01837661
+    ##                   online.trans online.spend  store.trans  store.spend
+    ## age                -0.07282280  -0.06857108  0.019179304 -0.011011624
+    ## credit.score       -0.03041161  -0.03344978  0.071479231  0.073196297
+    ## distance.to.store  -0.03046099  -0.03224989 -0.287771277 -0.252490015
+    ## online.visits       0.98349553   0.97645451 -0.018335097 -0.060228738
+    ## online.trans        1.00000000   0.99306906 -0.026717771 -0.063219201
+    ## online.spend        0.99306906   1.00000000 -0.025572587 -0.061704685
+    ## store.trans        -0.02671777  -0.02557259  1.000000000  0.892855470
+    ## store.spend        -0.06321920  -0.06170469  0.892855470  1.000000000
+    ## sat.service        -0.01762744  -0.01187352  0.001821736  0.007466294
+    ## sat.selection      -0.01846859  -0.02114840  0.001309098  0.008642354
+    ##                    sat.service sat.selection
+    ## age               -0.058463613  -0.074115061
+    ## credit.score      -0.050954538  -0.023509365
+    ## distance.to.store  0.025618746   0.012932114
+    ## online.visits     -0.016142000  -0.018376612
+    ## online.trans      -0.017627444  -0.018468588
+    ## online.spend      -0.011873515  -0.021148403
+    ## store.trans        0.001821736   0.001309098
+    ## store.spend        0.007466294   0.008642354
+    ## sat.service        1.000000000   0.587855775
+    ## sat.selection      0.587855775   1.000000000
+
+To visualize, use `corrplot()` or `corrplot.matrix()` from the `corrpolot` package to visualize correlation matrices.
+
+`corrplot.mixed()`:
+
+*`use="complete.obs"` to ignore NA's * `upper="ellipes"` to display ellipses in the upper triangle of hte matrix. For larger r, the ellipses are itghter and closer to being lines. For r's near 0, they are more like circles. \* `col= colorpanel(50,"red","gray60","blue4")` The circles are shaded blue for positive direction, red for negative, and grey for near 0.
+
+``` r
+library(corrplot)
+library(gplots) # for color panel
+```
+
+    ## 
+    ## Attaching package: 'gplots'
+
+    ## The following object is masked from 'package:stats':
+    ## 
+    ##     lowess
+
+``` r
+corrplot.mixed(corr=cor(cust.df[,c(2,3,5:12)],use="complete.obs"),
+               upper="ellipse",
+               tl.pos = "lt",  # where to position title of axes (left top)
+               col= colorpanel(50,"red","gray60","blue4"))
+```
+
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-27-1.png" width="750px" style="display: block; margin: auto;" /> *Observe*
+
+-   age is positively correlated with credit.score
+-   distance to store is negatively correlated with store transactions and spend
+-   online visits and online trans is strongly correlated with online spend
+-   satisfaction of service is positively corelated with satisfaction of selction
+
+Finding large correlations should inform subsequent analysis or suggest hypotheses to test
+
+#### 4.5.3 Before Computing Correlations, Tranform Variables
+
+Correlation coefficient *r* measures the *linear* assocation between 2 vars. If the relationship between 2 vars is not linear, it would be mimsleading to interpret r.
+
+For example, if we create a random variable that falls in the range \[-10,10\] using `runif()` to sample random uniform values - and then compute the correlation between x and x^2, we will get a correlation close to 0.
+
+``` r
+set.seed(49931)
+x <- runif(1000,min=-10,max=10)
+cor(x,x^2)
+```
+
+    ## [1] -0.003674254
+
+``` r
+plot(x,x^2)
+```
+
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-28-1.png" width="750px" style="display: block; margin: auto;" /> r is near zero even tho the fact that there is a perfectly *nonlinear* relations (quadratic) between x and x^2. So, best practice is to evaluate whether vars needs transformations or not before assessing the correlation.
+
+Many relationships in marketing data are nonlinear.
+
+For example, when we cor( distance to store, store spend), we get a medium negative correlation. But when we transform distance to store (x-var) to its *inverse* (1/distance), there appears a much stronger association. In fact, the inverse square root (1/sqrt(x)) shows an even stronger association:
+
+``` r
+# inverse transformation
+cor(1/cust.df$distance.to.store, cust.df$store.spend )
+```
+
+    ## [1] 0.4329997
+
+``` r
+# inverse square root
+cor(1/sqrt(cust.df$distance.to.store), cust.df$store.spend )
+```
+
+    ## [1] 0.4843334
+
+To visualize our transformations in stages:
+
+``` r
+par(mfrow=c(1,3))
+plot(cust.df$distance.to.store, cust.df$store.spend)
+plot(1/cust.df$distance.to.store, cust.df$store.spend)
+plot(1/sqrt(cust.df$distance.to.store), cust.df$store.spend)
+```
+
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-30-1.png" width="750px" style="display: block; margin: auto;" /> *Observe*: Because of the inverse *square root* relationship, someone who lives 1 mile from the nearest store will spend quite a bit more than someone who lives 5 miles away, yet someone who lives 20 miles away will only buy a little bit more than someone who lives 30 miles away. The association between distance and spending is much clearer with the transformed data as shown in the right-hand panel.
+
+Typical data transformations for marketing data include:
+
+**Unit Sales, revenue, household income, price**- `log(x)`
+
+**distance** - `1/x, 1/x^2, log(x)`
+
+**market or prefreence share based on a utility value** - `e^x/(1+e^x)`
+
+**right-tailed distributions (generally)** - `sqrt(x), log(x)`
+
+**left-tailed distributions (generally)** - `x^2`
+
+When these transformations don't work or we want the very best transformation, there's a general-purpose transformation function that can be used instead:
+
+#### 4.5.5 Box-Cox Transformations
+
+Many of the above transformations require taking a power of x: x^2, x^-1, x^0.5, x^-0.5. The *[Box-Cox Transformation](http://www.statisticshowto.com/box-cox-transformation/)* generalizes this use of power functions by automatically finding the optimal value of lambda (power) that would make the distribution best fit the normal distribution. Note the variable has to be positive else Box-Cox transformation is not appropriate. Box-Cox Transformation is defined as:
+
+![Box Cox Transformation](md-img/boxcox.png)
+
+where lamba can take any value and log is the natural logarithm (ln).
+
+`powerTransform(DATA)` to find the best Box-Cox transformation for DATA. It will tell us the value of lambda to make distances as similar as possible to a normal distribution.
+
+`coef()` extracts the value of lambda from `powerTransform(DATA)`. In practice, lambda is rounded to an integer before being used to transform the outcome, so that we get a nice power.
+
+`bcPower(U=DATA, lamba)`: provides the transformed data using lambda var
+
+``` r
+powerTransform(cust.df$distance.to.store)
+```
+
+    ## Estimated transformation parameters 
+    ## cust.df$distance.to.store 
+    ##              -0.003696395
+
+``` r
+(lambda_round <- coef(powerTransform(1/cust.df$distance.to.store),round=T))  # For distance, we'll employ 1/x^lambda. Lambda is rounded
+```
+
+    ## 1/cust.df$distance.to.store 
+    ##                           0
+
+``` r
+(lambda <- coef(powerTransform(1/cust.df$distance.to.store),round=F)) # Testing results when lambda is not rounded
+```
+
+    ## 1/cust.df$distance.to.store 
+    ##                 0.003696395
+
+``` r
+head(bcPower(cust.df$distance.to.store, lambda_round))
+```
+
+    ## [1] 0.9487557 3.8748607 0.2513129 1.6589882 3.2206620 2.9157168
+
+``` r
+head(bcPower(cust.df$distance.to.store, lambda))
+```
+
+    ## [1] 0.9504213 3.9027435 0.2514297 1.6640853 3.2399090 2.9314857
+
+Observe before and after transformation of `cust.df$distance.to.store`:
+
+``` r
+layout(matrix(c(1,1,2,3), 2,2,byrow=T)) # Plot 1 in Row 1, Col 1 & 2
+hist(cust.df$distance.to.store, main="Untransformed",  ylab="Customers Count")
+hist(bcPower(cust.df$distance.to.store, lambda), main="Transformed using Lambda", ylab="Customers Count")
+hist(bcPower(cust.df$distance.to.store, lambda_round), main="Transformed using Rounded Lambda",  ylab="Customers Count")
+```
+
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-32-1.png" width="750px" style="display: block; margin: auto;" /> *Observe* There's not too much a difference between rounded and unrounded lambda. Feel free to use either. The transformation is close to normal.
+
+If we attempt to transform a var that's already close to normal, Box-Cox transformation will report out on a lambda ~1 which brings us back to our original number *y*. This means a transformation is not required since the values will not change much after the transformation:
+
+``` r
+powerTransform(cust.df$age)
+```
+
+    ## Estimated transformation parameters 
+    ## cust.df$age 
+    ##    1.036142
+
+Now we can compute correlations for the transformed vars. These correlations will often be larger in magnitude than correlations among raw, untransformed data points. For ex, we'll check *r* between distance and in-store spending, transforming both first:
+
+``` r
+powerTransform(cust.df$store.spend + 1) #  the Box-Cox Power transformation only works if all the data is positive and greater than 0. This, however, can usually be achieved easily by adding a constant (c) to all data such that it all becomes positive before it is transformed. 
+```
+
+    ## Estimated transformation parameters 
+    ## cust.df$store.spend + 1 
+    ##                0.114401
+
+``` r
+l.dist <-coef(powerTransform(1/cust.df$distance.to.store))
+l.spend <-coef(powerTransform(cust.df$store.spend+1)) # since spend is left tailed, transformation is x^lambda. Remember to add spend +1 
+
+cor(bcPower(cust.df$distance.to.store, l.dist),
+    bcPower(cust.df$store.spend+1, l.spend)) # Remember to add spend  + 1 
+```
+
+    ## [1] -0.4680421
+
+``` r
+0^0.34 # 0 raised to any power is 0
+```
+
+    ## [1] 0
+
+In practice, we can consider Box-Cox transformations on all vars with skewed distirbutions before computing correlations or creating scatterplots. This increases the chance that we will find and interpret important assocations between vars.
+
+#### Plot layout: `layout(mat,w,h, byrow=)`
+
+Can be used in place of `par(mfrow=)`. It divides the device up into as many rows and columns are there are in matrix `mat`. `mat` is a matrix object *specifying the location of the next N figures* on the output device. Each value in the matrix must be 0 or a positive integer.
+
+### 4.6 Exploring Associations between Ordinal (Ranked), Discrete Vars (Suvery Responses)
+
+Many marketing data sets include variables where customers provide ratings on a discrete scale. These are *ordinal (ranked)* variables and it can be tricky to assess associations among them. The issue is the values only take on a few values which becomes a problem in assessing the strenght of association.
+
+For example, `sat.service` and `sat.product` only takes on integer values between 1 to 5. When plotted using `plot()`, it is not clear the associations. One way to make a plot of ordinal values more informative is to *jitter()* each variable, adding a small amount of random noise to each response so that we can see how many responses occur per combination of (x,y) values:
+
+``` r
+par(mfrow=c(1,2))
+plot(cust.df$sat.service, cust.df$sat.selection,
+     xlab="Customer Satisfaction with Service",
+     ylab="Customer Satisfaction with Selection",
+     main="Customers as of June 2014")
+
+
+plot(jitter(cust.df$sat.service), jitter(cust.df$sat.selection),
+     xlab="Customer Satisfaction with Service",
+     ylab="Customer Satisfaction with Selection",
+     main="Customers as of June 2014")
+```
+
+<img src="ch-4-relationships-between-continuous-variables_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-36-1.png" width="750px" style="display: block; margin: auto;" />
