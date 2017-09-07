@@ -1,0 +1,166 @@
+---
+title: "ch-5-comparing-groups"
+author: "Sonya Hua"
+date: "September 7, 2017"
+output: rmarkdown::github_document
+---
+
+## Comparing Groups: Tables and Visualizations
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+
+# set global display parameters
+knitr::opts_chunk$set(fig.width=12, fig.height=6, echo = TRUE, fig.align="center") 
+```
+
+
+One might be interested in group data by segment, region, time period, test groups, etc... In all such cases, we're comparing one group of data to another in order to identify an effect. 
+
+### Data Simulation (Consumer Segmentation Data)
+
+We simulate a data set representative of a consumer segmentation project. The scenario is a subscription-based service (such as cable TV or mag subsription), and we collect data from N= 300 respondents on *age, gender, income, # of children, whether they rent (Y,N), subscribe (Y,N). 
+
+Each respondent has been assigned to 1:4 customer segments: "Suburb Mix", "Urban Hip", "Travelers", or "Moving Up"
+
+Segmentation data is moderately complex and we separate our code into 3 steps:
+
+1) Define the data structure: demographic vars, segment names, and sizes
+
+2) Parametrize the distributions of the demographic vars (i.e. mean, variance, sd, probabilities)
+
+3) Code that iterates over the segments and vars to draw random values depending on the definitions and parameters
+
+#### Define the data structure
+
+First step is to define the variable names, data types, segment names, and sample size of each seg
+```{r}
+# Variables of segments
+segVars <- c("age","gender","income","kids","ownHome", "subscribe")
+
+# Distributions of each variable
+segVarType <- c("norm","binom","norm","pois","binom","binom")
+
+# Segment names
+segNames <- c("Suburb Mix", "Urban Hip", "Travelers", "Moving Up")
+
+# Size or # of obs per segment
+segSize <- c(100,50,80,70)
+```
+
+Distributions:
+
+* normal (continuous variables)
+* binomial (yes/no variables)
+* poisson (count variables)
+
+To help us generate the values per segment and variable, we'll create a *look up tables* of distribution parameters.  By storing values this way, we can easily make quick modifications for future purposes without digging through the code. It's best practice to separate data definitions vs. procedural code by declaring the appropriate variables and reusing it in procedural code. 
+
+We're going to create 2 lookup tables: 1 for means (including mean probabilities), and another for standard deviations for normally distributed vars. Since there's 4 segments and 6 variables, we create 4x6 matrices per table. Each row will represent Seg1, Seg2, etc... Each column will represent a different var. In the case of binom,  we specify the mean probabilities. In poiss vars, since we're using a random poisson distribution, we specify the mean number of kids. 
+```{r}
+segMeans <- matrix(c(
+  40, 0.5, 55000, 2, 0.5, 0.1,
+  24, 0.7, 21000, 1, 0.2, 0.2,
+  58, 0.5, 64000, 0, 0.7, 0.05,
+  36, 0.3, 52000, 2, 0.3, 0.2 ), 
+  ncol=length(segVars), byrow=T, dimnames= list(segNames, segVars))  
+# dimnames: takes on a list of length 2 with row and column names
+# byrow= T: filled by rows, not columns
+
+segMeans
+```
+
+```{r}
+segSDs <- matrix( c(
+  5, NA, 12000, NA, NA, NA,
+  2, NA, 5000, NA, NA, NA,
+  8, NA, 21000, NA, NA, NA,
+  4, NA, 10000, NA, NA, NA),
+   ncol=length(segVars), byrow=T, dimnames= list(segNames, segVars))
+
+segSDs
+```
+
+We have now fully defined the distribution parameters of each segment. 
+
+#### Iterate over each segment and var to fill in values
+
+Let's plan out our code in pseudocode (sentences organized like code). This helps us conceptualize the requirements of our code and we can easily debug concepts before actual coding:
+
+```
+Set up data frame "seg.df" and set a seed for replicating random numbers
+For each SEGMENT i in "segNames" {
+  Set up a temporary df "this.seg" for this SEGMENT's data
+  For each var j in "segVars" {
+    Use nested if() conditions on "segVarType[j]" to determine data type for VARIABLE
+    If it's a certain distribution, use segMeans[i,j and segSDs[i,j] to draw random data 
+    for VARIABLE (within SEGMENT) "segSize[i]" times
+  }
+  Add this SEGMENT's data ("this.seg") to the first data frame ("seg.df")
+}
+  }
+}
+
+```
+```{r}
+# Translating the pseudocode into R:
+
+seg.df <- NULL
+set.seed(02554)
+
+# Iterate over each segment
+for (i in seq_along(segNames)) {
+  cat(i, segNames[i], "\n")
+  this.seg <- data.frame(matrix(NA, nrow=segSize[i], ncol=length(segVars)))
+  
+  for (j in seq_along(segVars)) {
+    if (segVarType[j] == "norm") {
+      this.seg[,j] = rnorm(segSize[i], mean=segMeans[i,j], sd=segSDs[i,j])
+    } else if (segVarType[j] =="pois") {
+      this.seg[,j] = rpois(segSize[i], lambda=segMeans[i,j])
+    } else if (segVarType[j]=="binom") {
+      this.seg[,j] = rbinom(segSize[i],size=1, prob=segMeans[i,j])  # size = 1 for 1 trial per value
+    } else {
+      stop("Bad segment data type: ", segVarType[j])
+    }
+  }
+  seg.df <- rbind(seg.df, this.seg) # combines R objects by Rows
+}
+```
+
+```{r}
+# Add in the labels, names, and types
+(names(seg.df) <- segVars)
+head(seg.df)
+```
+
+```{r out.width=12}
+
+# Factorize the appropriate variables
+seg.df$Segment <- factor(rep(segNames, times=segSize)) # Within each elmeent of segNames, replicate it SegSize times
+seg.df$ownHome <- factor(seg.df$ownHome, labels= c("ownNO", "ownYes")) # ownNo = 0, ownYes = 1
+seg.df$gender <- factor(seg.df$gender, labels=c("Female", "Male"))   # Female = 0, Male = 1
+seg.df$subscribe <- factor(seg.df$subscribe, labels = c("subNo", "subYes")) # subNo = 0, subYes = 1
+
+# Check Data
+head(seg.df)
+library(psych)
+library(car)
+some(seg.df)
+tail(seg.df)
+
+```
+
+```{r}
+summary(seg.df)
+str(seg.df)
+library(psych)
+describe(seg.df)
+```
+
+As a final step, let's save the data frame as a backup so we can use it again in later chapters. Use "/" for path in windows:
+```{r}
+setwd("c:/users/sonya/documents/git/r-for-marketing-research-and-analytics")
+save(seg.df, file="segdf-Rintro-Ch5.RData")
+```
