@@ -164,3 +164,109 @@ As a final step, let's save the data frame as a backup so we can use it again in
 setwd("c:/users/sonya/documents/git/r-for-marketing-research-and-analytics")
 save(seg.df, file="segdf-Rintro-Ch5.RData")
 ```
+
+
+### 4.6 Finding Descriptives By Group
+
+With insights about segments, we can engage or tailor offers in different ways in order to reach them. 
+
+#####How does income and gender vary across segments?
+
+An ad hoc way to do this is with df indexing. For example, to find the mean income for "Moving Up":
+```{r}
+# mean income for Moving Up segment
+mean(seg.df$income[seg.df$Segment == "Moving Up"])
+
+# mean income for Moving Up segment who do not subscribe
+mean(seg.df$income[seg.df$Segment == "Moving Up" & seg.df$subscribe == "subNo"])
+
+```
+This is tedious to do all the time when we want to evaluate a function by conditions. A more general way to do this is with `by(data, INDICES, FUN)`, which divides `data` into groups for each of the unique values in `INDICES` and then apply the `FUN` function to each group 
+```{r}
+
+# mean income by segment
+by(seg.df$income, seg.df$Segment, mean)
+
+# mean income by segment and subscription status
+by(seg.df$income, list(seg.df$Segment, seg.df$subscribe), mean)
+```
+
+However, the output is stringy and not user-friendly. Use `aggregate()` instead which works almost the same as `by` in its list form except we need to include `list()` even if we are grouping by 1 variable. The result is a dataframe where we can save results to an object, which we can then index, write to a file, manipulate in other ways. 
+```{r}
+aggregate(seg.df$income, list(seg.df$Segment), mean)
+aggregate(seg.df$income, list(seg.df$Segment, seg.df$subscribe), mean)
+
+seg.income.mean <- aggregate(seg.df$income, list(seg.df$Segment), mean)
+head(seg.df$Segment)
+seg.df$segIncome <- seg.income.mean[seg.df$Segment, 2]  #  Indexed mean by segment to look up the appropriate value per row of seg.df
+
+# since seg.df$Segment includes all of the segment rows, we are indexing seg.income.mean by its mean so the return output is seg.df$segment with its mean
+```
+
+```{r}
+head(seg.income.mean)
+```
+
+```{r}
+head(seg.df$segIncome)
+tail(seg.df$segIncome)
+```
+
+When we check the `seg.df` data frame, we see that each row of obs matches its segment mean
+```{r}
+some(seg.df)
+```
+
+Caution: This is bad practice since it can lead to erroneous computations. Let's remove that column by setting its value to `NULL`
+```{r}
+seg.df$segIncome <- NULL
+str(seg.df)
+```
+#### 5.2.1 Formula Syntax
+
+*Formula specification* provides a standard way to desribe relationships among vars. A formula uses the tilde ~ to separate *response vars* from *explanatory vars* y~x. It can also be interpreted as "y in response to x" or "y is modeled by x" depending on the context
+```{r}
+aggregate(income ~ Segment, data=seg.df, mean)
+```
+
+
+#### 5.2.2 Descriptives for Two-Way Groups 
+
+A common task in marketing is cross-tabulating, separating customers into groups according to 2+ factors. Formula syntax makes it easy to compute a cross tab just by specifying multiple explanatory variables in the form `y~x1+x2....`. For example:
+
+```{r}
+aggregate(income~ Segment + ownHome, data=seg.df, mean)
+```
+
+We now have a separate group for each combination of `Segment` and `ownHome`.
+
+A formula can be extended to include as many grouping vars as needed. This data frame can also be saved for reuse:
+```{r}
+agg.data <- aggregate(income~Segment+income+ownHome+subscribe, data=seg.df, mean)
+agg.data[2,]
+
+```
+
+##### How frequent do people own homes per segment?
+
+This calls for combinations of `Segment` and `ownHome` with frequency values. We can compute frequencies using `table(factor1, factor2,...)` to obtain 1-way or 2-way count tables
+
+`with(data, expr, ....)` Evaluate an R *expression* in an environment constructed from *data*, possibly modifying (a copy of) the original data.
+```{r}
+with(seg.df, table(Segment, ownHome))
+```
+*Observe*: There are 10 observed customers in the "Urban Hip" segment who own homes and 60 in the "Travelers" segment
+
+##### What is the number of kids in each household by segment?
+```{r}
+with(seg.df, table(kids, Segment))
+```
+*Observe*: 80 "Travelers" have no kids. Very few households have more than 4 kids. 
+
+`xtabs(formula = y~x, data=)` creates a contingency table (optionally a sparse matrix) from cross-classifying factors, usually contained in a data frame, using a formula interface. The y variable must be a *numeric variable* and not a factor
+
+We can add together the counts of kids to get the total number of children per segment
+```{r}
+xtabs(kids~Segment, data=seg.df)
+xtabs(income~Segment, data=seg.df)
+```
