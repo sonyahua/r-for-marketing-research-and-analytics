@@ -12,7 +12,7 @@ library(knitr)
 knitr::opts_chunk$set(echo = TRUE)
 
 # set global display parameters
-knitr::opts_chunk$set(fig.width=12, fig.height=6, echo = TRUE, fig.align="center") 
+knitr::opts_chunk$set(fig.width=8, fig.height=5, echo = TRUE, fig.align="center") 
 ```
 
 
@@ -270,3 +270,130 @@ We can add together the counts of kids to get the total number of children per s
 xtabs(kids~Segment, data=seg.df)
 xtabs(income~Segment, data=seg.df)
 ```
+
+#### 5.2.3 Visualizations by Group: Frequencies and Proportions 
+
+The `lattice` package provides a way of plotting cross tabs with frequencies and proportions. `histogram(formula, data, type)` is similar to `hists()` but understands formula notation including conditioning on factors by separating the plot into multiple panes based on that factor. Conditioning is indicated by the symbol "|". `histogram()` automatically assumes by default percent of total counts (proportions) within each group as our response variable unless a response var is specified in the formula notation. 
+
+```{r}
+library(lattice)
+histogram(~subscribe | Segment, data=seg.df, layout=c(2,2))
+```
+*Observe* 
+
+* The "Suburban Mix" segment is least likely to subscribe. It suggests that the company might investigate or improve the product to make it more appealing to this group or else stop marketing to them. 
+
+If we want actual counts rather than proportions, we could include the argument `type="count"`.
+```{r}
+histogram(~subscribe | Segment, data=seg.df, type="count",
+           layout=c(4,1), col=c("burlywood","darkolivegreen"))  # Layout includes 4 columns, 1 row
+
+# layout is a numeric vector of length 2 or 3 giving the number of columns, rows, and pages (optional) in a multipanel display. By default, the number of columns is the number of levels of the first conditioning variable and the number of rows is the number of levels of the second conditioning variable.
+```
+
+To condition on 1+ factor, include the factor variable in the conditioning part of the formula with "+"
+```{r fig.width=6}
+histogram(~subscribe | Segment + ownHome, data=seg.df)
+```
+We can also plot just "yes" proportions vs. both "yes" and "no" bars. We can wrap `prop.table(data, margin=...)` around the regular `table()` to give us the proportions for each cell with proportion to 1) the entire table (default) 2) row (`margin=1`) or 3) column `('margin=2`). 
+
+##### What is the proportion of subscribers within each segment?
+
+Create a proportion table where `margin=2`. 
+```{r}
+(subSegment.prop <- prop.table(table(seg.df$subscribe, seg.df$Segment), margin=2)) # subscribe =x-axis, Segment = y-axis
+```
+To plot just the "yes" values, we can use `barchart()` and selct only the 2nd row of the `prop.table()`:
+
+```{r}
+barchart(subSegment.prop[2, ],
+         xlab="Subscriber proportion by Segment",
+         col="darkolivegreen")
+```
+*Observe* This chart strongly communicates that the Suburb Mix segment has a very low subscription rate within each segment. 
+
+Note the X-axis starts at 0.5, not at 0, so this can be misleading. We'll adjust that using the `xlim=c(LOW,HIGH)` argument where we specify LOW=0. As best practice, always set your xlim and ylim to 0 as a starting value.
+```{r}
+barchart(subSegment.prop[2, ],
+         xlab="Subscriber proportion by Segment",
+         col="darkolivegreen",
+         xlim=c(0,.25))
+```
+
+There's several ways to plot continous data. For ex, how would we plot income ~ segment in our data? A simple way would be to use `aggregate()` to find the mean income, and then use `barchar()` from lattice package to plot the values:
+
+```{r}
+seg.mean <- aggregate(income ~ Segment, data=seg.df, mean)
+barchart(income~Segment, seg.mean, col="grey",
+         main="Avg. income by Segment")
+```
+
+To split this out further by home ownership, 1) we have to aggregate the data to include `Segment + ownHome`. 2) tell `barchart()` to use `ownHome` as a `groups=` grouping variable. 
+```{r}
+
+
+seg.income.agg <- aggregate(income ~ Segment + ownHome, data=seg.df, mean)
+barchart(income ~ Segment, 
+         groups=ownHome, 
+         data=seg.income.agg,
+         par.settings=simpleTheme(col=terrain.colors(2))) # added simpleTheme option to par.settings to improve the chart colors
+
+#The appearance of a lattice display depends partly on the “theme” active when the display is plotted 
+
+# simpleTheme: Simple interface to generate a list appropriate as a theme, typically used as the par.settings argument in a high level call 
+```
+
+There's a variety of color palettes we can use within RColorBrewer package
+
+`brewer.pal(n, name)` Creates nice looking color palettes especially for thematic maps. `n` is the number of different colors in the palette (minimum 3). `name` is the palette name:
+
+
+Accent	 8
+Dark2	 8
+Paired	 12
+Pastel1	 9
+Pastel2	 8
+Set1	 9
+Set2	 8
+Set3	 12
+```{r}
+
+```
+
+
+```{r fig.height=7}
+library(RColorBrewer)
+display.brewer.all()
+```
+```{r}
+barchart(income ~ Segment, 
+         groups=ownHome, 
+         data=seg.income.agg,
+         par.settings = simpleTheme(col=  brewer.pal(3,"Set3")))   # Using RColorBrewer's Set3 Palette
+```
+A more informative plot for comparing values of continuous data is a boxplot. A boxplot is better than a barchart because it shows the distribution of values. 
+
+`boxplot()` works with formula syntax to plot a box-and-whiskers plot by factor. 
+```{r}
+boxplot(income ~ Segment, data=seg.df, yaxt="n", ylab="Income (k)")
+ax.seq <- seq(from=0, 120000, 20000)
+axis(side=2, # for y-axis
+     at=ax.seq,
+     labels= paste("$",ax.seq/1000, "k", sep=""),
+     las=1) # horizontal direction for text
+```
+```{r}
+# equivalent content but with better graphics using bwplot() from lattice package. 
+# CAUTION: bwplot() uses the model formula in the opposite direction x ~ y vs. y~ x
+
+bwplot(Segment ~ income, data=seg.df, horizontal=T, # y is our factor so horizontal == T for for y
+       xlab="Income")
+
+# horizontal = :  Determines which of x and y is to be a factor or shingle (y if TRUE, x otherwise). 
+# Defaults to FALSE if x is a factor or shingle, TRUE otherwise
+```
+*Observe* : Travelrs have a much wider distribution of income. Urban Hip has a smaller distriubtion and lowest income 
+```{r fig.width=7}
+bwplot(Segment ~ income | ownHome, data=seg.df, horizontal = T, xlab="Income $", layout=c(1,2))
+```
+*Observe* Distribution for travelers is smaller for people who don't own homes. 
