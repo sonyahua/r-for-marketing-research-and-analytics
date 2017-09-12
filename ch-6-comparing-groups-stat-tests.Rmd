@@ -383,3 +383,172 @@ anova(seg.aov.step)
 In cases where there's dozens, hundreds or thousands of vars, it's better to use other procedures like lasso, random forect, or a machine learning algorithm (SGD, Decision Trees, Regression etc.)
 
 ### 6.6 Bayesian ANOVA
+
+It's preferred to consider Bayesian Analyses instead of traditional, frequentist statistics whenever possible.
+
+Upsides:
+* It's a more direct way to tackle the questions we usually want to know such as "Is this hypothesis likely to be true, given the data?", "How much confidence do I have?", "What are the most likely values?", "Given this data, how likely is the difference?"
+* There is no null hypothesis
+* More directly addresses confidence in models for the data we actually have
+* Hierarchical methods are more flexibly modeled in a Bayesian framework
+
+Downsides:
+
+* There are fewer Bayesian teachers, resources, and practitioners.
+* Many Bayesian references are dense with formulas
+* There are ambiguities
+* Avail software packages are designed to make frequentist models easy to run. It's not so easy for Bayesian.
+
+####6.6.2 Basics of Bayesian ANOVA
+
+Bayesian packages:
+
+* `[MCMCpack](http://mcmcpack.berkeley.edu/)` (Markov Chain Monte Carlo) is a robust, fast, powerful Bayesian kit. Contains functions to perform Bayesian inference using posterior simulation for a number of statistical models include *linear regression (with Gaussian errors), Quinn's dynamic ecological inference model, Wakefield's hierarchial ecological inference model, a probit model, a logistic regression model, a one-dimensional item response theory model, a K-dimensional item response theory model, a robust k-dimensional item response theory model, a Normal theory factor analysis model, a mixed response factor analysis model, an ordinal item response theory model, a Poisson regression, a Poisson changepoint model, a tobit regression, a multinomial logit model, an SVD regression model, and an ordered probit model*
+
+* `[BayesFactor](http://bayesfactorpcl.r-forge.r-project.org/)`  enables the computation of Bayes factors in standard designs, such as one- and two- sample designs, ANOVA designs, and regression. Another [good read here](https://thewinnower.com/papers/using-bayes-factors-to-get-the-most-out-of-linear-regression-a-practical-guide-using-r)
+
+A common way to estimate a Bayesian model is to do repeated trial assessments of how well a model fits the data. Common Bayesian models select random values for model parameters (such as the mean) and retains the parameter based on the likelihood that it fits the data and prior expectation (an estimated starting point). This process is repeated thousands/millions of times. The retained estimates are the *draws* from the posterior distribution for the parameters. The final estimated distribution of each estimate is the posterior distribution. In the end, we get a large sample of possible parameters and their likelihoods i.e. an outline of the most likely parameters for a given model. 
+
+We'll use `lmBF(formula, data)` to specify our ANOVA model as a Bayesian linear model for `income` modeled by `Segment`. We'll set a pseudorandom number seed b/c this function will take *draws* from the *posterior distribution*. Before we directly interpet this model though, it's best practice to have a sense that it is an adequate model. We'll compare it to the alternative model we considered earlier `income ~ Segment + ownHome`. We should interpet whichever model fits the data better.
+
+Model comparison in `BayesFactor` is performed by usnig the '/' operator to find the ratio of the models' Bayes Factor.
+```{r}
+#install.packages("MCMCpack")
+#install.packages("BayesFactor")
+
+library(MCMCpack)
+library(BayesFactor)
+
+# BFManual() for Manual to BayesFactor
+
+# Set a psedurandom number seed to take draws from a posterior distrib.
+set.seed(96761)
+
+# First Bayes ANOVA Model
+seg.bf1 <- lmBF(income ~ Segment, data=seg.df)
+
+# 2nd Bayes ANOVA Model
+seg.bf2 <- lmBF(income ~ Segment + ownHome, data=seg.df)
+
+# Model Comparison based on Bayes Factor ratio
+seg.bf1 / seg.bf2
+```
+*Observe*:
+
+* The Bayes Factor ratio for Model 1 is ~6.58. Model 1 is the preferable model by a factor of 6.58. 
+
+`posterior(model, index, iterations=)` to find the model parameters, and their *credible ranges* based on *n* draws/iterations and # of numberators (index)
+
+The draws from this posterior distribution are called a *chain* since they're estimated by a **[Markov chain process](http://setosa.io/ev/markov-chains/)**. This is a [good video](https://www.khanacademy.org/computing/computer-science/informationtheory/moderninfotheory/v/markov_chains) on Markov chain process and here's another [article](http://techeffigytutorials.blogspot.com/2015/01/markov-chains-explained.html). 
+
+```{r}
+(seg.bf.chain <- posterior(seg.bf1, 1, iterations=10000))
+```
+*Observe* Each row represents a draw, and columns for the estimates per segment. We can't yet interpret these estimates until we check whether the draws *converged* to stable values so that the estimates a reliably interpretable. 
+
+To check for convergence of draws, call `plot()` on the chain objeect's parameters columns that we care about. In this case, we care about all parameters except the last column. 
+
+```{r}
+plot(seg.bf.chain[,1:6])
+```
+*Observe*:
+
+* On the left are the estimated parameter values plotted against draw sequence (x-axis). These form a fat, straight line, which means the estimates varied around a stable central point; thus, they converged. If they had not converged, the plot would show erratic variations up/down, or would spread out increasingly rather than a straight line.
+* On the right are density plots of the values. The density shape is ~ normal, which matches the assumption of the regression model. * The charts confirm the model achieved stable estimates and converged
+
+####6.6.3 Inspecting the Posterior Draws
+
+We can now examine the parameters as expressed in our posterior draw chain by using `summary()` on the chain.
+
+Interpretation Guidelines:
+
+* The 1st section (Empirical mean/sd for each var) gives central tendency estimates for the 10K draws of each of the parameters in the chain. The model estimates an overall mu that is the bet guess for hte population mean regardless of segment effects, and then estimates each segment as a deviation from that mean, which isn't as useful as reporting out on actual observed estimates for the mean of each segment rather than its deviation. 
+
+* The 2nd section (Quantiles) reports the actual observed quantiles for each of the parameters
+```{r}
+summary(seg.bf.chain)
+```
+*Observe*: The 1st section provides deviation from mu for each of the segments. 
+
+To estimate the direct values for each segment, we'll add the population mu to the deviations for each segment. However, we can't simply add mu to the deviations since the deviations are aggregated, average deviations. The best estimates of segment totals are found within each draw, thus we need to compute segment values at that level, then summarize those estimates. 
+
+```{r}
+# Examine the chain object
+head(seg.bf.chain)
+
+#By indexing the chain, the confirm this is a matrix:
+seg.bf.chain[1:4,1:5] # Select 4 rows, 5 columns
+
+```
+We're going to add mu to each segment columns (deviations from mu) to arrive at total estimates per segment. Perform matrix addition to find within-draw estimates for each row. Add column 1, the population estimate, to each of the other columns 2-5. Test this first on rows 1:4 only
+```{r}
+
+seg.bf.chain[1:4,2:5] + seg.bf.chain[1:4, 1]  
+```
+
+It works! Now we compute that total for all rows and assign the results to a new chain object and resummarize:
+
+```{r}
+seg.bf.chain.total <- seg.bf.chain[,2:5] + seg.bf.chain[,1]
+summary(seg.bf.chain.total)
+```
+We can also manually pull [credible intervals](https://www.r-bloggers.com/confidence-vs-credibility-intervals/). For example, by applying `quantile()` with the probabilities that we want to the columns, we get 95% credible interval.  Transposing the results with `t()` provides more readable results.
+```{r}
+(seg.bf.95ci <- t(apply(seg.bf.chain.total, 2, quantile, pr=c(0.025, 0.5, 0.975))))
+
+```
+*Observe* 
+
+*These values are the beste istimates of the the 95% credible range for the estimates of mean income as modeled by segment, under the assumptions of our model. 
+*A [Bayesian statistician](https://arxiv.org/pdf/1411.5018.pdf) inteprets results as “given our observed data, there is a 95% probability that the true value of mu falls within this credible region”
+* A[ Frequentist statistician](https://www.r-bloggers.com/confidence-vs-credibility-intervals/) interprets “there is a 95% probability that when I compute a confidence interval from data of this sort, the true value of mu will fall within it”.
+
+##### Confidenve vs. Credible Intervals
+
+The Bayesian approach fixes the credible region, and guarantees **95% of possible values ** of will fall within it. The frequentist approach fixes the parameter, and guarantees that **95% of possible confidence intervals** will contain it.
+
+#### 6.6.4 Plotting Bayesian Credible Intervals
+
+We can plot credible intervals using `ggplot2` to plot error bars. Works best with data frames, so we need to coerce our credible interval into a df and add a column for segment names. We plot the chart in 3 steps:
+
+1a) coerce credible intervals into a df
+
+1b) We add elements corresponding to the values of the segment quartiles in the df.
+
+2) We add points for the y values (the estimated median in this case), and add the 2.5% and 97.5% quartiles as "error bars" (associated with `ymax` and `ymin`). 
+
+3) Draw the plot object, adding a title, flipping the plot coordinates so segments are on the left
+
+
+`ggplot()` initializes a ggplot object. It can be used to declare the input data frame for a graphic and to specify the set of plot aesthetics intended to be common throughout all subsequent layers unless specifically overridden. Note: `aes` are aesthetic mappings that describe  how variables in the data are mapped to visual properties (aesthetics) of geoms. 
+```{r}
+library(ggplot2)
+
+#1a) coerce CrI into a df
+(seg.bf.df <- data.frame(seg.bf.95ci))
+
+```
+```{r}
+
+#1b) Add elements to df
+(seg.bf.df$Segment <- rownames(seg.bf.df))
+(p <- ggplot(seg.bf.df, aes(x=Segment, y=X50., ymax=X97.5., ymin=X2.5.)))
+
+```
+`geom_point` : The point geom is used to create scatterplots
+`geom_errorbar`: Various ways of representing a vertical interval defined by x, ymin and ymax. Each case draws a single graphical object.
+```{r}
+#2) add points for the y-vals and error bars which are associated with ymax and ymin
+(p <- p + geom_point(size=4) + geom_errorbar(width=0.2) + ylab("Income"))
+```
+```{r}
+# 3) PLot object while adding a title and flipping coordinates
+p + ggtitle("95% CI for Mean Income by Segment") + coord_flip()
+```
+Notice above plot is similar to what we get with frequentist stats.
+```{r}
+par(mar=c(6,10,2,2))
+plot(glht(seg.aov),
+     xlab="Income", main="Average Income by Segment (95% CI)")
+```
+
