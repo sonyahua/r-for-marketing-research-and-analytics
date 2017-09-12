@@ -5,7 +5,7 @@ September 8, 2017
 
 "It looks different but is it really different?" The answer involves our first [inferential statistical](https://statistics.laerd.com/statistical-guides/descriptive-inferential-statistics.php) procedures: *chi-square, t-tests, and ANOVA*.
 
-It's all about estimating parameters and testing hypotheses.
+It's all about estimating parameters and testing hypotheses. Before applying any stat test or model, it's impotant to examine the data and check for 1) missing values 2) outliers 3) Skewness 4) Normal Distributions. Since more tests assume a normal distribution or some other smooth continuous distribution.
 
 ### 6.1 Data for Comparing Groups
 
@@ -202,7 +202,7 @@ chisq.test(table(seg.df$subscribe, seg.df$ownHome), sim=T, B=10000)
     ##  replicates)
     ## 
     ## data:  table(seg.df$subscribe, seg.df$ownHome)
-    ## X-squared = 0.074113, df = NA, p-value = 0.8628
+    ## X-squared = 0.074113, df = NA, p-value = 0.8619
 
 *Observe*
 
@@ -268,6 +268,18 @@ sum(dbinom(8:12, 20, 0.5))
 
 *Observe* If we observe 20 fans and the true split is 50%, there's a 73.7% chance that would would observe between 8 to 12 fans.
 
+An *exact* binomial test may be too conservative (wide CI) in its estimation of CI's. Another method is to use the *[agresti-coull](http://www.stat.ufl.edu/~aa/articles/agresti_coull_1998.pdf)* method to get a slightly smaller CI but still includes 50%. Use `binom.confint(method="ac")`
+
+``` r
+library(binom)
+binom.confint(12, 20, method="ac")
+```
+
+    ##          method  x  n mean     lower     upper
+    ## 1 agresti-coull 12 20  0.6 0.3860304 0.7817446
+
+*Observe* The CI bound using approximate (0.39 to 0.78) is smaller compared to exact binomial test (0.36 to 0.81)
+
 ##### What if we observed 120 out of 200 people to be Seattle fans? (The same proportion as before but in a larger sample)
 
 ``` r
@@ -291,14 +303,82 @@ binom.test(120,200,.5)
 
 -   The CI no longer includes 50%. The p-value &lt; 0.05, indicating there is a statistically signifciant difference.
 
-An *exact* binomial test may be too conservative (wide CI) in its estimation of CI's. Another method is to use the *[agresti-coull](http://www.stat.ufl.edu/~aa/articles/agresti_coull_1998.pdf)* method to get a slightly smaller CI but still includes 50%. Use `binom.confint(method="ac")`
+#### Among the 20 groups, 0 groups had a mixture of Seattle and Denver fans based on their team clothing. What's the most likely proportion of groups that comprise of mixed fans?
+
+We need to use the *Agresti-Coull* method because exact tests have no confidence intervals for 0% or 100% observations:
 
 ``` r
-library(binom)
-binom.confint(12, 20, method="ac")
+binom.confint(0,20, method="ac")
 ```
 
-    ##          method  x  n mean     lower     upper
-    ## 1 agresti-coull 12 20  0.6 0.3860304 0.7817446
+    ##          method x  n mean      lower     upper
+    ## 1 agresti-coull 0 20    0 -0.0286844 0.1898096
+
+*Observe*: The negative bound may be ignored as an artifact. We conclude that althouogh Chris observed 0 cases, the occurrence of mixed fandom groups is likely to be between 0 to 19% of the time.
 
 The `binom` package also computes several other varients of the binomial test including a Bayesian version.
+
+### 6.4 T-test: Testing Group Means
+
+A *[t-test](http://www.stat.columbia.edu/~martin/W2024/R2.pdf)* compares the mean of one sample against mean of another sample or against a specific valie i.e. 0. It compares means for exactly 2 data sets.
+
+#### Is the household income different among those who own a home and those who do not?
+
+Let's check for normality before doing a t-test:
+
+``` r
+# Fix the levels first
+
+levels(seg.df$ownHome) <- c(levels(seg.df$ownHome), "ownNo")
+seg.df$ownHome[is.na(seg.df$ownHome)] <- "ownNo"
+summary(seg.df$ownHome)
+```
+
+    ##  ownNO ownYes  ownNo 
+    ##    159    141      0
+
+``` r
+seg.df$ownHome <- droplevels(seg.df$ownHome)
+levels(seg.df$ownHome) <- c("ownYes","ownNo")
+summary(seg.df$ownHome)
+```
+
+    ## ownYes  ownNo 
+    ##    159    141
+
+``` r
+par(mfrow=c(1,3))
+hist(seg.df$income)
+with(seg.df, hist(income[ownHome=="ownYes"]))
+with(seg.df, hist(income[ownHome=="ownNo"]))
+```
+
+<img src="ch-6-comparing-groups-stat-tests_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-13-1.png" style="display: block; margin: auto;" />
+
+``` r
+# boxplot
+
+#bwplot(ownHome ~ income, data=seg.df, horizontal = T, xlab="Income $", layout=c(1,2))
+```
+
+*Observe* Based on the histograms and boxplots, income is ~ normally distributed.
+
+Test whether home ownership overall is related to differences in income, across all segments, using `t.test(formula,data)` where `income` is the y var and `ownHome` is the x var.
+
+``` r
+t.test(income ~ ownHome, data=seg.df)
+```
+
+    ## 
+    ##  Welch Two Sample t-test
+    ## 
+    ## data:  income by ownHome
+    ## t = -3.2731, df = 285.25, p-value = 0.001195
+    ## alternative hypothesis: true difference in means is not equal to 0
+    ## 95 percent confidence interval:
+    ##  -12080.155  -3007.193
+    ## sample estimates:
+    ## mean in group ownYes  mean in group ownNo 
+    ##             47391.01             54934.68
+
+*Observe* The 95% CI does not include 0, so we can conclude there is significant difference in income between home ownership. The data suggests that people who own their houses have a higher income. We have 95% confidence that the group difference is between $3007 and $12,080.

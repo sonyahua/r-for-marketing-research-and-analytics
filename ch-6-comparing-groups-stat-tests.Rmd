@@ -194,7 +194,7 @@ The `binom` package also computes several other varients of the binomial test in
 
 ### 6.4 T-test: Testing Group Means
 
-A *t-test* compares the mean of one sample against mean of another sample or against a specific valie i.e. 0. It compares means for exactly 2 data sets. 
+A *[t-test](http://www.stat.columbia.edu/~martin/W2024/R2.pdf)* compares the mean of one sample against mean of another sample or against a specific valie i.e. 0. It compares means for exactly 2 data sets. 
 
 
 #### Is the household income different among those who own a home and those who do not?
@@ -224,10 +224,162 @@ with(seg.df, hist(income[ownHome=="ownNo"]))
 ```{r fig.height=4}
 # boxplot
 
-bwplot(ownHome ~ income, data=seg.df, horizontal = T, xlab="Income $", layout=c(1,2))
+#bwplot(ownHome ~ income, data=seg.df, horizontal = T, xlab="Income $", layout=c(1,2))
 ```
 *Observe* Based on the histograms and boxplots, income is ~ normally distributed. 
 
 Test whether home ownership overall is related to differences in income, across all segments, using `t.test(formula,data)` where `income` is the y var and `ownHome` is the x var. 
 
+```{r}
+t.test(income ~ ownHome, data=seg.df)
+```
+*Observe* 
 
+*The 95% CI does not include 0, so we can conclude there is significant difference in income between home ownership. 
+*The data suggests that people who own their houses have a higher income. 
+*We have 95% confidence that the group difference is between \$3007 and \$12,080.
+*The mean income for renters is \$47K while homeowners $55K
+
+#### Is there a difference income between homeownrship within the Travelers segment?
+
+We use the filter `data=subset(data, condition)` to select just Travelers and repeat the test:
+```{r}
+t.test(income~ ownHome, data=subset(seg.df, Segment=="Travelers"))
+```
+*Observe*
+
+* The CI of -$8,508 to $11,107 include 0 which means there is not a significant difference in mean income among those Travelers in our data who own homes and who don't. 
+* P-Value = 0.7916 deems not significant
+* We noticed earlier that the first t-test is significant across all segments, but this test is not significant. This suggests that any significant difference must lie largely outside the "Travelers" segment
+
+###6.5 ANOVA: Testing Multiple Group Means (vs. t-test which tests 2 groups)
+
+ANOVA compares means of multiple groups by comparing the degree to which groups differ as measured by variance in their means from one another, relative to the variance of abervations around each mean within each group. It tests for difference among multiple means with the assumption that the groups have similar variance. 
+
+*One-way ANOVA: Includes 1 factor
+*Two-way ANOVA: Includes 2 factors
+
+`aov(formula,data)`: basic command to set up the ANOVA model
+`anova(model)`: to display standard ANOVA summary from `aov()`
+
+
+##### Which factors are related to differences in mean income? Is income related to home ownership, to segment membership, or both? 
+
+1) We run `aov(income ~ ownHome)` and assign the `aov()` model to an object so we can use it in our next step
+2) `anova()` on the aov model object
+
+```{r}
+seg.aov.own <- aov(income ~ ownHome, data=seg.df)
+anova(seg.aov.own)
+```
+*Observe*:
+
+* There's significant variation between home ownership status and income (p-value < 0.05)
+
+##### Is there a difference in income by segments?
+```{r}
+
+aov.inc.segments <- aov(income ~ Segment, data=seg.df)
+anova(aov.inc.segments)
+```
+*Observe*:
+
+* Income varies significantly by segment. 
+
+##### If income varies by both home ownership and segment, does that mean that a more complete model should include both? 
+
+We add both factors into the two-way ANOVA model to test this:
+```{r}
+anova(aov(income ~ Segment + ownHome, data=seg.df))
+```
+*Observe*: Results indicate that when we try to explain income differences by both Segment and home ownership, segment is a significant predictor, but not home ownership. Why? Because segment and homeownership are dependent, and the variation is captured sufficiently by segment membership alone. We can test this further using chi-square test to validate if this is true.
+
+```{r}
+table(seg.df$ownHome, seg.df$Segment)
+chisq.test(table(seg.df$ownHome, seg.df$Segment))
+```
+*Observe* Yes, there is a significant difference between Segments and Home ownership. 
+
+##### Could it be that home ownership is related to income in some segments but not in others?
+
+This would be represented in our model by an *interaction effect*. In a model, 
+
+"+" indicates vars should be modeled for main effects only.
+":" model for interaction effect
+"*" model for both main effect and interaction
+
+We'll test main effects and interaction of home ownership and segment
+```{r}
+anova(aov(income ~ Segment * ownHome, data=seg.df))
+```
+*Observe* 
+
+* Segment is a significant predictor while the rest are not. Segment membership is again the best predictor on its own. 
+
+#### 6.5.1 Model Comparison in ANOVA
+
+Another capability of `anova()` command is to compare 2+ models so we can analyze which model performs better in fitting the data according to RSS (Residual Sum of Squares).  NOTE: model comparison performed by `anova()` onlyl makes sense for nested models where we can perform likelihood comparisons. Other methods should be used such as the AIC and BIC criterion.
+
+##### Which model has a better fit? ANOVA model with segment alone vs. the model with both segment + homeownership? 
+
+```{r}
+anova(aov(income ~ Segment, data=seg.df),
+      aov(income ~ Segment + ownHome, data=seg.df))
+```
+*Observe*:
+
+* Model 2 is not significantly different in overall fit from Model 1. 
+* We fail to reject the null hypothesis of no difference in the 2nd model 
+
+#### 6.5.2 Visualizing Group CI's 
+
+Best practice is to visualize the results of an ANOVA by plotting confidence intervals for the group means. This tells us whether the differences are substantial in magnitude or not.  
+
+`glht(model)` is a general linear hypothesi stest part of the `multcomp` package (multiple comparison)
+```{r}
+library(multcomp)
+seg.aov <- aov(income ~ Segment, data=seg.df)
+glht(seg.aov)
+```
+*Observe*: The intercept become the Moving Up segment and all results are relative to the intercept (see the positive/negative numbers)
+
+This may be confusing to understand, so let's remove the intercept by adding "-1" to the model formula.
+```{r}
+
+seg.aov <- aov(income ~ -1 + Segment, data=seg.df)
+glht(seg.aov)
+```
+*Observe* Mean value for each segment is provided. 
+```{r}
+par(mar=c(6,10,2,2))
+plot(glht(seg.aov),
+     xlab="Income", main="Average Income by Segment (95% CI)")
+```
+*Observe*: 
+
+* The average income of Urban Hip segment is substantially lower than the other three groups
+* Confidence intervals for income by segment is provided. 
+* We see Urban Hip segment has a larger CI than other segments. Suburb Mix has a smaller CI. 
+
+####6.5.3 Stepwise Modeling: Variable Selection for ANOVA
+
+With stepwise modeling, we can aotmate the iterative process of bulding models by adding/removing variables from the model based on some threshold/improvement criterion. 
+
+* Backward stepwise: starting with a larger set of vars and progressing cutting them. This is the default direction of `step()`
+* Forward stepwise: adding variables
+
+`step()` uses the AIC to compare models on the basis of overall fit and model complexity. Use `response ~ .` to model all main effects in the model where "." is short for "all other variables except the response var. By default, this model tests all main effects without interactions. To test higher order effects (i.e. quadratic), use superscript notation i.e. "`.^2`" for two-way interactions, but it's usually good to avoid such interaction modeling. 
+
+```{r}
+seg.aov.step <- step(aov(income ~., data=seg.df))
+```
+*Observe* Stepwise modeling included all 6 vars at first, went through several steps of removing vars, and concluded with the "best" model as `income ~ Segment`.
+
+We can exampine the result of stepwise modeling using `anova()` on the model object
+```{r}
+anova(seg.aov.step)
+```
+
+In cases where there's dozens, hundreds or thousands of vars, it's better to use other procedures like lasso, random forect, or a machine learning algorithm (SGD, Decision Trees, Regression etc.)
+
+### 6.6 Bayesian ANOVA
