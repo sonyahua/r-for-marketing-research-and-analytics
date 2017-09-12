@@ -1,0 +1,319 @@
+---
+title: "ch-7-linear-models"
+author: "Sonya Hua"
+date: "September 12, 2017"
+output: rmarkdown::github_document
+---
+
+## Linear Models: Identifying outcome drivers
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+
+# set global display parameters
+knitr::opts_chunk$set(fig.width=8, fig.height=5, echo = TRUE, fig.align="center") 
+```
+
+**Satisfaction drivers analysis* : A common application in survey analysis whereby we model satisfaction with a product in relation to specific elements of the product.
+
+**marketing mix modeling** Modeling how price and advertising are related to sales
+
+Driver does not imply caucstion, but simply a linear assocation among variables. Linear models is a loose term for regression analysis or least-squares fitting.
+
+### 7.1 Simulating Data: Amusement Park Satisfaction
+
+Data comprises of 500 observations/responses:
+
+* `weekend`: whether the respondent visited on a weekend
+* `num.child`: number of hcildren brought
+* `distance` : distance traveled to the park
+* `overall` : overall satisfaction
+* `rides, games, wait, clean` : satisfaction with the rides, games, waiting times, and cleanliness respectively
+
+```{r}
+set.seed(08226)
+nresp <- 500
+halo <- rnorm(n=nresp, mean=0, sd=5) # Satisfaction Halo effect with a random var per customer. Halo does not appear in the final data but is used to influence other ratings
+
+# Assume data is on a 100-point scale. By adding halo to each response, we create naturally positive correlation between the responses
+rides <- floor(halo + rnorm(n=nresp, mean=80, sd=3) +1)
+games <- floor(halo + rnorm(n=nresp, mean=70, sd=7)+5)
+wait <- floor(halo + rnorm(n=nresp, mean=65, sd=10) +9)
+clean <- floor(halo + rnorm(n=nresp, mean=85, sd=2) +1)
+
+# Verify correlation between vars that share the halo
+cor(rides, games)
+
+# Sample a lognormal distribution for distance
+distance <- rlnorm(n=nresp, meanlog=3, sdlog=1)
+
+# Sample discrete distributions for weekend and num.child
+num.child<- sample(x=0:5, size=nresp, replace=TRUE,
+                   prob=c(0.3,0.15,0.25, 0.15, 0.1, 0.05))
+
+weekend <- as.factor(sample(x=c("yes","no"), size=nresp, replace=TRUE,
+                            prob=c(0.5,0.5)))
+
+# Create overall satisfaction rating as function of ratings for the various aspects of vist
+# Includes halo to capture latent satisfaction
+# Adds the satis vars with weight for each one
+# inlcudes weighted contributions for other influences
+# random normal variation using rnorm()
+# Uses floor() to produce an integer with a constant -51 to adjust the total to be >= 100 points
+
+overall <- floor(halo + 0.5*rides +0.1*games +0.3*wait +0.2*clean +
+                   0.3*distance +5*(num.child==0) + 0.3*wait*(num.child>0) +
+                   rnorm(n=nresp, mean=0, sd=7) -51)
+
+# Combine vars into a df and removed unneeded objects from workspace
+sat.df <- data.frame(weekend, num.child, distance, rides, games, wait, clean, overall)
+
+rm(nresp, weekend, distance, num.child, halo, rides, games, wait, clean, overall)
+```
+
+### 7.2 Fitting linear models with `lm()`
+
+Inspect data first:
+```{r}
+summary(sat.df)
+```
+
+For some reason, I'm not able to replicate the data set in the book (notice there's points over 100) so I'm going to use the shortcut as our df
+```{r}
+sat.df <- read.csv("http://goo.gl/HKnl74")
+str(sat.df)
+summary(sat.df)
+```
+
+####7.2.1 Prelim Data Inspection
+
+Before modeling, check that each variable has a reasonably normal distribution and that joint relationships among the vars are approrpriate for modeling.
+
+```{r fig.width=11}
+library(gpairs)
+gpairs(sat.df)
+```
+*Observe* Most vars are normal with the exception of distance which is left-skewed. We can do a log transformation on distance to see if it helps normalize the distribution
+
+```{r}
+sat.df$logdist <- log(sat.df$distance)
+```
+
+```{r}
+gpairs(sat.df)
+```
+*Observe* 
+* logdist is more normally distributed
+* The pairwise scatterplots of our continuous vars are generally elliptical in shape- a good indication they are appropriate for linear modeling. Howeever, the vars in the lower right are positive correlated; there's multicollinearity. When vars are strongly related in this way, it's difficult to assess their individual effects with stat models. The effect can be so severe that the relationships become uninterpretable without taking some action to handle the high correlations
+
+*Recs*:
+
+* Given the positive assocations, investigate the correlation structure further
+```{r}
+library(corrplot)
+
+# Select columns 2, 4:9 to exlucde the categorical vars and the raw var distance since we transformed it in logdist
+corrplot.mixed(cor(sat.df[,c(2,4:9)]), upper="ellipse") # Add upper=ellipse to mixed command for easier corr spotting
+```
+
+*Observe*
+
+* The satisfaction items are moderately to strongly associated with one another.
+* None of the vars appear to be nearly identical, as would be indicated by correlations exceeding r > 0.9
+* rides and clean are highly related (r=0.79) but not so strongly that remediation is strictly required
+* It appears to be acceptable to proceeed with modeling hte relationships among these vars
+
+#### Linear Model with 1 Predictor 
+
+##### To what extent is satisfaction with the rides related to overall experience? Is the relationship strong or weak? 
+
+Plot these two vars 
+```{r}
+plot(overall~rides, data=sat.df)
+```
+*Observe*
+
+* There's a tendency for people with higher satisfaction with rides to have higher overall satisfaction 
+
+`lm(formula,data)` where data is a df, for linear modeling 
+```{r}
+(m1 <-lm(overall~rides, data=sat.df))
+```
+*Observe* This provides the intercept and slope of a fitted line which we can use to calculate predicted values based on a rating from rides, or used to plot a fitted line among the data. abline() recognizes lm objects as a line
+
+```{r}
+# The expected overall rating for someone who gives a rating of 95 for ride satisfaction
+-94.962 + 1.703 * 95
+
+# plot
+plot(overall~ rides, data=sat.df,
+     xlab="Ride Satisfaction", ylab="Overall Satisfaction")
+abline(m1, col="red", lwd=2)  #lwd = line width
+
+
+```
+```{r}
+
+# contains everything lm() knows about the model
+str(m1)
+```
+
+
+```{r}
+
+# Hand calculated CI 
+1.7033 + 1.96 * 0.1055
+1.7033 - 1.96 * 0.1055
+
+# equivalent: confint()
+confint(m1) # default level is 95%
+
+confint(m1, level=.99) # 99% CI
+```
+
+To get summarized features of the fitted model, use `summary()`
+
+Interpretation of output:
+
+* The Residuals quartile section tells us how closely or not the data follows the best fit line. A *residual* is the difference between the model-predicted value vs. observed value. 
+
+* Standard error indicates uncertainty in the coefficient estimate, assuming the data are a random sample of a larger population. 
+
+* The t-value, p-value, and signiciance codes indicate a *Wald Test*, which asseses whether the coefficient is significantly different from 0. A traditional estimate of a 95% CI for the coefficient estimate is it will fall within +/- 1.96 x Standard Error. Always report our CI's along with the point estimate. 
+
+* Residual standard error is an estimate of the avg error of the residuals. It's a measure of how close the data points are to the estimate line. 
+
+* R-squared is a measure of how much *variation in y *is captured by the model
+
+* F-statistic provides a stat test with null hypothesis that a model without predictors perform as well as the model. It tests whether the model predicts the data better than simply taking the average of the y var and using htat as the prediction or all obs. 
+```{r}
+summary(m1)
+```
+*Observe*:
+
+* The rides coefficient 1.70 means: each additional rides rating point  results in an increase of 1.7 points in overall rating
+* Residuals are quite wide ranging from -34 to 35, suggesting our predictions can be quite a bit off for any given data point ( > 30points on the rating scale). The quartiles of the residuals suggest they're fairly symmetric around 0. That's a good sign this model although imprecise, is unbiased. 
+* On average, points deviate 12.8 points away from the fitted function.
+* According to R^2 = 0.34, about 34% of the variation in overall satisfaction is explained by the model
+* According to the F-test, we reject the null hypothesis that a model without predictors performs as well as our model. In other words, this model performs better than a straight up average of overall satisfaction
+
+#### 7.2.5 Checking Model Fits and Diagnostics
+
+There's 5 key assumptions in a linear model that we must check for before finalizing results:
+
+* Linear relationship - prediction errors are normally distributed and look like random noise with no pattern
+* Multivariate normality - does not deviate significantly from normal distribution
+* No or little multicollinearity 
+* No auto-correlation.
+* Homoscedasticity - homogeneous band of errors across observed values
+
+`plot()` the regression model for the diagnostic plots:
+
+1) Fitted Values vs. Residuals - There should be no obvious pattern and residuals should resemble random error
+
+2) Fitted Values vs. Square Root of the standardized residuals - Checks for homscedasticity. There should be no clear pattern. Observations with ihgh residuals are flagged as potential outliers which we should inspect later. A common pattern in residual plots is a cone or funnel where errors get progressively larger for larger or smaller fitted values, which suggests *heteroskedasticity*. When values in one part of the range have a much larger spread than those in another area, they will have biased influence on the estimation of hte line. Sometimes a transformation on the predictor or outcome var will resolve this
+
+3) Normal QQ Plot -Checks for normality. It compares the values that residuals would be expected to take if they are normally distributed vs. observed values. 
+
+4) Leverage  vs. standardized residuals - *Leverage* of each point is the measure of the point's influence on the estimated model coefficients. The leverage is based on *Cook's distance*, an estimate of how much predicted values (y) would change if the model were re-estimated without the point in the data. If there's obs with high Cook's distance, this chart would show dotted red lines for the distances. Any pot'l outliers will have their obs number called out. 
+
+Best practice is to inspect pot'l outliers for any problems within the data. We generally do not omit outliers except when they're obvious errors in the data. 
+
+```{r fig.width=8, fig.height=7}
+par(mfrow=c(2,2))
+plot(m1)
+```
+*Observe*:
+
+* 1st Plot: There's no obvious pattern between fitted values for overall satisfaction and the residuals. Residuals resemble random error.
+* 2nd Plot (Scale-Location): There's no clear pattern and suggests homoskedasticity
+* 3rd Plot (Normal QQ): The data fits normality
+* 4th Plot: There are no extreme outliers but there are some pot'l outliers 57, 129, and 295
+
+Let's inspect the pot'l outliers for any data errors
+```{r}
+sat.df[c(57, 129, 295),]
+```
+*Observe*
+* Row 129 might be inaccurate, but we don't know
+
+We'll keep all of the observations presently. Overall, the model relating overall satisfaction to satisfaction with rides seems reasonable. 
+
+### 7.3 Linear Models with Multiple Predictors
+
+Interpretation of the coefficients changes: each coefficient represents the strength of the relationship between x and y, based on the values of the other predictors (have not changed) 
+
+##### Which features of the park most closely related to overall satisfactions? 
+
+```{r}
+(m2 <- lm(overall ~ rides + games + wait + clean, data=sat.df))
+summary(m2)
+```
+*Observe*:
+
+* The R-Squared increased from 0.34 to 0.56. Our prediction has improved by including all satisfaction features in our model. About half of the variation in overall ratings is explained by the ratings for specific features. 
+* The residual SE is now 10.59, decreased from 12.88. The predications are more accurate.
+* Residuals appear to be symmetric according to the Residual Quartiles.
+* All 4 features are identified as being statistically significant (p < 0.05). 
+* The coefficients for rides changed from m1 to m2 (1.70 to 0.529). This is because rides correlated with all other vars. Customers who are more satisfied with rides tend to be more satisfaied with the wait and games. Coefficients genreally change unless the vars are entirely uncorrelated
+We can plot the coefficients along with the CI's by calling `coefplot()` of the `coefplot` package, adding `intercept=FALSE` to plot just the var coefficients. 
+```{r}
+#install.packages("coefplot")
+#install.packages("dplyr")
+#install.packages("plyr")
+library(coefplot)
+
+coefplot(m2, intercept=F, 
+         outerCI = 1.96, # for 95% CI
+         lwdOuter=1,
+         ylab="Feature Rating",
+         xlab="Association with Overall Satisfaction")
+```
+*Observe*:
+* Cleanliness is estamed to be the most important feature associated with overall satisfaction, followed by wait and rides. Satisfaction with games is estimated to be relatively less important. 
+
+Sorting the coefficient plot may be easier to see the priority of coefficients by calling `sort = "magnitude"`. A coef plot is often a key output of a satisfaction drivers analysis. 
+```{r}
+
+coefplot(m2, intercept=F, 
+         outerCI = 1.96, # for 95% CI
+         lwdOuter=1,
+         ylab="Feature Rating",
+         xlab="Association with Overall Satisfaction",
+         sort = "magnitude")
+```
+
+#### 7.4.1 Comparing Linear Models
+
+##### Which model is better in fit? m1 or m2?
+
+We can compare adj. r-squared values of each model to see which model has a larger adj. r-squared
+```{r}
+# Use adjusted-R-squared values which control for number of predictors in m2
+summary(m1)$adj.r.squared
+summary(m2)$adj.r.squared
+```
+*Observe* The adj. r-squared suggested m2 explains more of the variation in overall satisfaction
+
+It's best practice to also compare the predictions of the models visually by plotting the fitted vs. actual values for each model. If the model fits the data perfectly, the points will fall on a diagonal line. By comparing models, we can see which model fits the data better by forming a tighter diagonal. 
+
+```{r}
+plot(sat.df$overall, fitted(m1), col='red',
+     xlim=c(0,100), ylim=c(0,100),
+     xlab="Actual Overall Satisfaction",
+     ylab="Fitted Overall Satisfaction")
+
+# Now plot m2 points
+points(sat.df$overall, fitted(m2), col="blue")
+
+# Add a legend
+legend("topleft", legend=c("model 1", "model 2"),
+       col=c("red","blue"), pch=1)
+```
+*Observe* Model 2 (blue points) is more tightly clusterd along a diag line, showing m2 explains more variation in the data than m1. 
+
+For a more formal test, which is possible since the models are nested, we can use ANOVA to determine whether m2 explains more variation:
+```{r}
+anova(m1, m2)
+```
+*Observe*: p-value is significant, so we can reject the null hypothesis of no difference in the 2nd model 
