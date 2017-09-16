@@ -1,0 +1,384 @@
+---
+title: "ch-8-reducing-data-complexity"
+author: "Sonya Hua"
+date: "September 14, 2017"
+output: rmarkdown::github_document
+---
+# Reducing Data Complexity
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+
+# set global display parameters
+knitr::opts_chunk$set(fig.width=8, fig.height=5, echo = TRUE, fig.align="center") 
+```
+
+Marketing data sets often have many variables or *dimensions* and it's beneficial to reduce these to smaller sets of vars to consider. I.e. in a consumery survey, there may be a smaller number of underlying concepts out of the survey questions. If we can reduce the data to its underlying concepts, we can more clearly idenfity relationships among concepts. There's 3 main methods:
+
+1) Principal Component Analysis (PCA) - finds uncorrelated linear dimensions (principle components) that capture maximum variance in the data. Often associated with *perceptual maps* that visualizes the associations among the dimensions
+
+2) Exploratory Factor Analysis (EFA) - captures variance with a small number of interpretable dimensions (principle components) in terms of the original variables
+
+3) Multidimensional Scaling (MDS) - maps similarities among observations in terms of a low-dimension space such as a 2D plot. it works with metric and non-metric data such as categorical or ordinal
+
+### 8.1 About the Data: Brand Perception Survey
+
+Data reflects consumer ratings of 10 brands (A through J) with regard to 9 *perceptual adjectives* for 100 respondents (1000 rows). I.e:
+
+1) On a scale from 1 t0 10, how trendy is Blue Bottle Coffee?
+
+2) On a scale from 1 to 10, how much of a category leader is Dunkin Donuts?
+
+For this data set:
+
+* perform: Brand has strong performance
+* leader: Brand is a leader in the field
+* latest: Brand has the latest products
+* fun: Brand is fun
+* serious: Brand is serious
+* bargain: Brand products are a bargain
+* value: Brand products are a good value
+* trendy: Brand is trendy
+* rebuy: i would buy the brand again
+
+Such ratings are collected for all combinations of adjectives and brands of interest. Let's load the data and check it:
+
+```{r}
+brand.ratings <- read.csv("http://goo.gl/IQl8nc")
+head(brand.ratings)
+tail(brand.ratings)
+```
+*Obs*: Each of the 100 respondents has obs for each of the 10 brands so (10 brands x 100 respondents = 1000 rows). The scale is from 1 to 10
+
+```{r}
+summary(brand.ratings)
+str(brand.ratings)
+```
+*Obs*: All the perceptual adjectives are defined as numeric while the brand is a factor var. There are 9 perceptual adjectives. 
+
+#### 8.1.1 Rescaling the Data
+
+It's best practice to rescale new data then save the scaled data into a new data frame. This makes data more comparable across individuals and samples. A common prodedure is to center each var by subtracting each obs by its mean, then rescale those *centered values* by standard deviation (aka *standardizing, normalizing, z-scoring*)
+
+```{r}
+brand.sc <- brand.ratings
+brand.sc[,1:9] <- scale(brand.sc[,1:9])  # we only scale numeric columns 1-9 and leave the brand column alone 
+summary(brand.sc)
+```
+*Obs*: 
+
+* All mean values are 0 since the data is resaled. 
+* Observations on the adjectives have a spread of roughly 2.4 standard deviations. The distribution is *platykurtic* or flatter than a standard normal distribution which has a range of more than 4 standard deviations. This is a common characteristic of survey data, due to *floor and ceiling effects*
+
+Let's produce a correlation plot for initial inspection of bivariate relationships among the vars. To reorder rows and columns according to var's similarity in a *hierarchical cluster solution*, use `order="hclust"` option:
+```{r}
+cor(brand.sc[,1:9])  # correlation matrix
+library(corrplot)
+corrplot(cor(brand.sc[,1:9]),order="hclust") # corrplot operates on corr matrix 
+# hclust, results are sorted by a hierarchical cluster solution 
+```
+*Obs*:
+
+* The ratings seem to group into 3 clusters of similar vars, a hypothesis we'll examine later
+* The 3 genreal clusters may comprise of *fun/latest/trendy*, *rebuy, bargain, value*, and *perform, leader, serious*
+
+##### What's the average position of each brand per adjective?
+
+We use `aggregate()` to find the average of each var per brand. 
+
+```{r}
+(brand.mean<- aggregate(.~brand,  data=brand.sc, FUN=mean))
+```
+
+Let's name the rows pf `brand.mean` with the brand labels that `aggregate()` put into the `brand` column then remove the brand column
+```{r}
+rownames(brand.mean) <- brand.mean[,1]
+brand.mean
+```
+```{r}
+brand.mean <- brand.mean[,-1]
+```
+
+```{r}
+brand.mean
+```
+*obs* The final matrix is now nicely formatted. However, it's difficult to tell how each brand is doing due to numbers overload. Let's create a heatmap out of these numbers
+
+A heatmap is a useful way to visualize such results. 
+
+`heatmap.2()` from gplots package creates enhanced heatmaps with a dendrogram added to the left side or top. We'll use colors from the `RColorBrewer` package in the `col=` argument. 
+
+1)First we need to coerce `brand.mean` into a matrix using `as.matrix()` 
+2) then chooose a color palette and 
+3) turn off a few options that'd clutter the heatmap such as `trace,key,dendrogram`. 
+4) We'll improve title alignment by addning blank lines before the title text
+
+```{r}
+library(gplots)
+library(RColorBrewer)
+heatmap.2(as.matrix(brand.mean), # brand.mean in matrix form
+          col=brewer.pal(9, "GnBu"), # selecting 9 colors from GnBu palette using brewer.pal
+          trace="none", # options include row, column, or both for a trace line
+          key=F,
+          dend="both",
+           main="Brand Attributes")
+```
+
+### 8.2 PCA and Perceptual Maps
+
+PCA recomputes a set of vars in terms of linear functions known as *principal components* or linear combinations of vars in the data set, that captures linear associations in the data.
+
+PC1 captures as much of the variance as possible from all vars as a linear function.
+PC2 captures as much variance as possible that remains after PC1. Vice versa...
+Total number of PC's = # of vars
+
+#### 8.2.1 PCA Example
+
+Let's create highly correlated data by copying a rnadom vector `xvar` to a new vector `yvar` while replacing half of its points. `zvar` is a copy of `yvar` while replcaing half of its points. 
+
+`yvar` will be correlated with `xvar` because 50 of the obs are identical while 50 are newly sampled random vals. `zcar` will be correlated with `yvar` more than `xvar`. We can check this correlation by plotting bivariate plots along with the correlation matrix using `jitter()` since there may be overlapping values due to our sampling. 
+
+```{r}
+# Create data
+xvar <- sample(1:100, size=100, replace=T) # for sampling with replacement
+yvar <- xvar
+yvar[sample(1:length(yvar), 50)] <- sample(1:10, 50, replace=T) # replace 50 values in yvar with a sample from 1 to 10 with replacement
+zvar <- yvar
+zvar[sample(1:length(zvar),50)] <- sample(1:10,50,replace=T)
+
+# combine the vectors to form a table
+(my.vars <- cbind(xvar, yvar, zvar))
+```
+
+```{r}
+pairs(jitter(my.vars))
+```
+```{r}
+cor(my.vars)
+```
+*Obs* The correlation matrix shows high correlation between yvar~zvar, xvar~yvar, and weaker correlation between xvar~zvar. Using intuition, we would expect a PC that picks up correlation of all 3 vars. After that, we expect a PC that shows xvar and zvar are more differentiated from each other than yvar. We expect a 3rd PC that picks up yvar's unique position in the data set as the only variable to correlate highly with both vars. 
+
+Let's perform PCA using `prcomp()`:
+```{r}
+(my.pca <- prcomp(my.vars))
+```
+*Obs*: Rotation Matrix:
+
+* Interpreting PCA rotation loadings (the coefficients per PC function) is difficult due to the multivariate nature -factor analysis a better method for interpretation.
+* PC1: All 3 vars has shared variance (the negative direction is not important; the key is that they are all in the same direction - negative). The signs of the columns of the rotation matrix are arbitrary, and so may differ between different programs for PCA, and even between different builds of R. Pay more attention to the direction and degree of loadings instead. 
+* PC2: `xvar` and `zvar` are different from one another with loadings in opposite directions.
+* PC3: residual variance of the other 2 vars is different from yvar - yvar is unique from the other 2 vars
+
+```{r}
+summary(my.pca)
+```
+*Obs*:
+
+* PC1 explains 65% of variance in the data, PC2 24%, and PC3 10%
+
+In addition to the loading & rotation matrix, PCA computes scores for each PC that express the underlying data in terms of its loadings per component. This can be accessed by `$x` matrix where the columns may be used to obtain values of the *components per observation*. *`$x` is a numeric or complex matrix (or data frame) which provides the data for the principal components analysis.*We can use a small number of these columns instead of the original data to obtain a set of obs that captures much of the variation in the data. 
+```{r}
+head(my.pca$x)
+```
+
+Recall PC's are uncorrelated with one another. We see this by running a correlation matrix on the PCA scores. 
+```{r}
+cor(my.pca$x)
+```
+*Obs* The correlations between PC's are almost 0. 
+
+#### 8.2.2 Visualize PCA (Biplots, Perceptual Maps)
+
+Map the first few components (PC1, PC2..) using *biplots*, a 2D plot of data points with respect ot the first 2 PC's, overlaid with a projection of the vars on the components. 
+
+The arrows show the best fit of each of the vars on the PC's - a projection of the vars onto 2D space. These are useful to inspect because the *direction & angle* of the arrows reflect the relationship of the vars. A *closer angle* indicates higher positive association, while the *relative direction* indicates positive or negative linear assocation of the vars.
+```{r}
+biplot(my.pca)
+```
+*Obs*
+
+* PC1: `yvar, xvar, and zvar` are closely algiend with PC1. `yvar` and `zvar` are more closely aligned with the first PC. 
+* PC2: `xvar` and `zvar` are very different from each other
+
+If we have several components beyond 2 that account for substantial variance, we can plot PC's using `choices` argument to biplot(). 
+```{r}
+biplot(my.pca, choices=2:3) # PC2 vs. PC3
+```
+*Obs*: PC3 shows uniqueness of xvar vs. yvar and zvar
+
+Plot a scree plot using `plot(pca, type="l")` for line. *Scree plots* show the sequential proportion of additional variance that each PC adds. 
+```{r}
+plot(my.pca, type="l")
+```
+
+#### 8.2.3 PCA for Brand Ratings
+
+```{r}
+(brand.pc <- prcomp(brand.sc[,1:9])) # PC on the numeric vars
+```
+
+```{r}
+summary(brand.pc)
+```
+```{r}
+plot(brand.pc, type="l")
+```
+*Obs*: Based on the scree plot, we should retain 3 PC's (before a natural break in the variance) before any unnecessary complexity. 
+
+```{r}
+biplot(brand.pc)
+```
+*Obs*: There's 4 distinctive regions/adjective groupings:
+
+* category leadership(perform, leader, serious)
+* value(rebuy, value, bargain)
+* trendiness(trendy,latest)
+* fun on its own
+
+* The biplot would be more useful if the data was first aggregated by brand
+* The biplot of individual respondent's ratings are too dense and doesn't tell us much about the brand positions. We can perform PCA using aggregated ratings per brand using `aggregate()`
+
+```{r}
+brand.mean
+```
+We should rescale the data using `scale=T` in `prcomp()`even though the raw data was already rescaled since the aggregated means have a somewhat different scale than the standardized data itself:
+```{r}
+(brand.mu.pc <- prcomp(brand.mean, scale=T)) 
+summary(brand.mu.pc)
+```
+*Obs* Results show tht the first 2 PC's account for 84% of the *variance in the mean ratings*, so we focus on interpreting results with regard to them. 
+
+```{r}
+plot(brand.mu.pc, type="l")
+```
+*Obs* Retain 2 PC's
+
+#### 8.2.4 Brand Perceptual Maps
+
+A biplot of the PCA solutiono for the mean ratings gives an interpretable *perceptual map*, showing where the brands are placed with respect to the first 2 PC's. We use `biplot()` on the PCA solution for the mean rating by brand. Recall we labelled our row names as the brands themselves so this will show up in the biplot as the brand letters insteawd of the row numbers 
+```{r}
+biplot(brand.mu.pc, main="Brand Positioning", cex=c(1.7,1)) # Add a title and increase font size by 50% of the row names
+```
+*Obs*: 
+
+Before interpeting the map, check that using mean data didn't greatly alter the structure of the data. The perceptual map shows a different spatial rotation of hte adjectives vs. earlier biplot, but the spatial position is arbitrary and the new map has the same overall regions of adjectives ( serious/leader/perform, fun on its own, etc.) Thus the var positions on the components are consistent with PCA on the full set of bos. We can go ahead and interpret:
+
+* There 4 areas with well differentiated sets of adjectives and brands that are positioned closely.
+* Brands f and g are high on value and bargian
+* Brands c and b are high on performance/leadership/serious
+* Brands a and j are high on "fun" and opposite in direction from leadership adjectives
+* Brands d, h, and i are opposite direction of bargain/value/rebuy, high on latest/trendy
+* Brand e appears to not be well-differentiated on any of the dimensions as it's in the middle. 
+
+*Actions*:
+Brand e's perception could be good or bad depnding on our strategic goals for brand e. If our goal is to be a safe brand, that appeals to many consumers, then an undifferentiated position like e is desirable. On the other hand, if we wish our brand to have a strong, differentiated perception, this finding would be unwanted but important to know. If we wish to increase differentiation, one possibility would be to take action to shift our brand in some direction on the map. Suppose we want to be more like brand c. We can look at the specific differences between brand c and e:
+
+```{r}
+brand.mean[c("c","e"),]
+
+```
+```{r}
+
+# Differences: 
+
+brand.mean["e",] - brand.mean["c",]
+```
+*Obs* We are lacking in performance, leader, seriousness. We are ample in bargain, value, and fun. 
+
+*Actions*:
+
+* We can dial down messaging or other attributes that reinforce these perceptions. Performance and seriousness could be aspects of the product or message for brand e to strengthen
+
+* If our strategic goal would be to not follow another brand, but to aim for differentiated space where no brand is positioned, there is a large gap between group b/c vs. group f/g. This area might be described as the "value leader" Let's assume that the gap reflects approximately the avg. of b/c/f/g. We can find that avg. using `colMeans()` on the brands' rows then take the difference of e from that avg:
+
+```{r}
+ brand.mean["e",] - colMeans(brand.mean[c("b","c","f","g"),])
+```
+*Obs*: We can target the gap by increasing emphasis on performance, leadership, seriousness, and rebuy while decresaing emphasis on fun/latest/trendy
+
+PCA is a useful tool for understanding differences in the market.
+
+#### 8.2.5 Best Practices with Perceptual Maps
+
+There are 3 important caveats in interpreting perceptual maps:
+
+##### 1) We must choose the level and type of aggregation functions carefully depending on the data and objective. 
+It might be suitable to use median (for ordinal, discrete skewed data) or mode (for categorical data). Always Check that the dimensions are similar for hte full data and aggegated summary data before interpreting aggregate maps. Do this by examining the var positions and relationships in biplots of both aggregated data and row data to see they do not deviate significantly from associations. 
+
+##### 2) Relationships should be interpreted in the context of the the product category and the brands and adjectives that are tested
+In a different product category, adjectives like "fun" and "leader" could have a very different relationship such as hospitality. Also, sometimes adding/dropping a brand can change the map and positions entirely. We also need to be confident that all the key perceptions have been assess for outliers, skews, and sensitivities. One way to assess sensitivity is to run PCA and biplot on a few different sapmles from our data, such as 80% of obs, and dropping a var each time. If the maps are similar across those samples, we may feel more confident in the stability of the anlaysis
+
+##### 3) The strength of a brand on a single adjective cannot be read directly from the chart. THe positioning is RELATIVE to all other brands in the map
+Positions of brands depend on their relative positioning within the principal components, which are constructs of composited dimensions. We should be looking at the largest-magnitude similarities, which may obscure smaller differences that do not show up strongly in the first one or 2 dimensions. We can't read adjective positions directly from a biplot as they are not absolute positions, but are relative. Similar to how we interpret simpler perceptual maps such as the one below:
+
+![](https://upload.wikimedia.org/wikipedia/commons/6/60/PerceptualMap1.png)
+*Obs* We can't actually say Porche is the most sportiest and classy car. It's sportiest and classiest relative to the brands we are looking at. 
+
+
+Explain positions with language such as *"Compared to its position on other adjectives, brand c is relatively differentiated by perceptions of strength on perform/leader/seriousness"*
+```{r}
+biplot(brand.mu.pc, main="Brand Positioning", cex=c(1.7,1)) # Add a title and increase font size by 50% of the row names
+```
+* It might appear that brands b/c are weaker than d/h/i on "latest" be are similar to one another.
+* Actually, b is the single strongest brand on latest, while c is weak on "latest". 
+* Brands b and c are quite similar to one another in terms of hteir scores on the two components that aggregate all of the adjectives, but they're not necessarily similar on any single var.
+
+### 8.3 Exploratory Factor Analysis (EFA) or Factor Analysis
+
+EFA is a family of methods to asess the relationship of constructs in survey/psychological assessments. *Factors* or *latent variables* cannot be observed directly, but are imperfectly assessed through their relationship with *manifest variables* or observed variables. For example, "intelligence" could be a latent construct made up of manifest vars like test scores, grades, etc. EFA finds the degree to which latent, composite factors account for hte observed variance in the manifest variables. For example, we can't directly observe customer satisfaction, but we might observe responses on a survey that asks about different aspects of a customer's experience, jointly representing different facets of the underlying construct "satisfaction." Similarly, we can't directly observe *purchase intent, price sensitivity, or category involvement" but there multiple manifest behaviors that are related to them. 
+
+##### Objective of EFA
+Unlike PCA, EFA tries to find solutions that are maximally *interpretable* in terms of hte manifest variables. It tries to find solutions in which a small # of loadings are very high, while other loadings are very low per factor. This allows for interpretation based off a small set of vars. 
+
+##### How does EFA work?
+EFA uses *orthogonal rotations* (uncorrelated rotations i.e. varimax) of a mathematical solution to explain identical variance but with different loadings on the original vars. The shared goal of these rotations is to maximize the loadings on a few vars while making each factor as distinct as possible from one another. 
+
+Consider EFA in terms of a pizza topped with multiple toppings, that needs to be cut a certain umber of slices. The pizza can be rotated and cut in a way that distinguishes each slice (tomato slice, mushroom slice, half and half, etc.). When we describe the slice, we can interpret it based off a few toppings. 
+
+Unlike PCA, EFA produces results that are interpertable in terms of the original variabls and not relatively.
+
+##### Uses of EFA
+
+* To refine a survey by keeping items with high loading on factors of interest while reducing items that do not load highly on the underlying construct/factor. 
+* Investigate whethe  a survey's items go together in a way that is consistent with expectations of measurement. For example, if we have a 10-question survey that's supposed to assiss the single construct "customer satisfaction" we need to know whether those items in fact go together in a way that can be interpreted as a single factor, or whether they instead reflect multiple dimensions that we might not have considered. Before interepeting multiple questions as assessing a single concept, we need to test that these questions do in fact point to a single construct of customer satisfaction. Is our data in fact consistent with an asserted structure we had initially placed for the survey? 
+* Dimensional reduction - We can use *factor scores* instead of a larger set of vars. I.e., if we're assessing satisfaction, we can use a single satisfaction score instead of several separate items.
+* Reduce uncertainty and noise - If we believe satisfaction is imperfectly manifest in several measures of the survey, the combination of those will have less noise than the set of indivdual vars
+* Reduce data collection next round by focusing on vars that are known to have high contribution to factors of interest. If we discover that some items aren't important for a factor of interest, we can discard them next round of data collection efforts. 
+
+##### How many latent factors are there in our data?
+
+1st step in EFA is to determine the number of factors to estimate. There's 2 traditional methods:
+
+1) Use a scree plot 
+2) Retain factors where the eigenvalue >= 1. An eigenvalue ~1 corresponds to the amount of variance that might be attributed to a single indepdentent var; a factor that captures less variance may be considered relatively uninteresting. 
+
+```{r}
+# Method 1: Scree Plot
+#install.packages("nFactors")
+library(nFactors)
+nScree(brand.sc[,1:9])
+```
+*Obs* : Results suggest that the data set has 3 factors based on four different scree tests. 
+
+```{r}
+# Method 2: Check eigenvalues. In order to examine eigenvalues, we must first create a correlation matrix and apply eigen() to corr matrix
+eigen(cor(brand.sc[,1:9]))
+
+```
+*Obs*: The eigenvalues row listed above suggest we retain 3 factors, even though though factor 3 is barely > 1. 
+
+Best practice is to *check a few factor solutions*. We will test a 3-factor solution vs. 2-factor solution to see which one is more useful.   
+
+`factanal(x, factors=K)` performs EFA on numeric data where K is the number of factors to fit.
+```{r}
+# 2-factor model:
+factanal(brand.sc[,1:9], factors=2)
+```
+*Obs*:
+
+* Some of the factors are near 0, are are removed from the output. 
+* Factor 1 loads strongly on "bargain" and "value" so it might be intrepreted as a "value" factor
+* Factor 2 loads strongly on "leader" and "serious" so it can be interpreted as "category leader" factor. 
+
+Now let's compare this to a 3-factor solution. Whichever 
