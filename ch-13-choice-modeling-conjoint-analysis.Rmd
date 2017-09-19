@@ -1,0 +1,84 @@
+---
+title: "ch-13-choice-modeling-conjoint-analysis"
+author: "Sonya Hua"
+date: "September 18, 2017"
+output: rmarkdown::github_document
+---
+## Choice Modeling Using Conjoint Analysis
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+
+# set global display parameters
+knitr::opts_chunk$set(fig.width=8, fig.height=5, echo = TRUE, fig.align="center") 
+```
+
+Choice-based conjoint analysis is a survey method used to analyze customers' product choices within a product category to understand how features and price affects which product a customer will choose. Survey data on customers' choices can be analyzed to determine which features of a product i.e. package size, brand, flavor, are most attractive to customers and how they trade off desirable features vs. price.
+
+Product choice data doesn't fit well into the linear modeling frameowrk, because the outcome we observe is not a number per product, but rather a choice among several options, each of which as its own set of attributes. To account for this unique data, marketers adapt choice models, which are well suited to udnerstanding relationships between product attributes and customers' choices among sets of products. *Multinomial logit model* is the most frequently used choice model in marketing.
+
+A *Multinomial logistic regression* (often just called 'multinomial regression') is used to predict a *categorical* dependent variable given one or more independent variables. It is sometimes considered an extension of binomial logistic regression to allow for a dependent variable with more than two categories.
+
+Conjoint Survey Terminology:
+**Alternatives** - The product options (product profile)  in the survey
+**Attributes** - product features
+**Level** -  Within each attribute are levels of values that vary across the alternatives (price at $3, $4, $5)
+
+Choosing products in a survey mimics the natural task that consumers face everyday when in shopping. Hence, this is the standard method for conjoint analysis (choice-based).
+
+The difference between choice-based conjoint and metric conjoint is the structure of the data we collect. Each observation is a choice among alternatives with varying levels of attributes. 
+```{r}
+cbc.df <-read.csv("http://goo.gl/5xQObB")
+head(cbc.df)
+```
+*Obs*: 
+
+* The first 3 rows describe the first question that was asked of repondant 1 (resp.id =1). Respondant 1 choice ALT3. 
+* The `choice` column shows chosen alternatives. 
+* The data organized in this manner is called the long format where each alternative is on its own row per respondant. This is generally preferred.
+
+There's also a *wide* format where each row corresponds to  different question and another format where profiles are stored separately apart from choices. Pay close attention to the required data format for data collection when using R packages or other software systems. Consider creating functions for reformatting for reuse. For example, `Rcbc` provides a helpful set of utilities for converting from the format used by *Sawtooth Software* into the format used by the `ChoiceModelR` package. 
+
+#### 13.3.1 Inspect Choice Data
+
+Once we have data properly formatted, get an understanding of the data using basic descriptives: 
+```{r}
+summary(cbc.df)
+```
+*Obs*: We see for 3-level attributes that each level occurred ~3000x times and 4500x for 2-level attributes. 
+
+However, a more informational way to summarize choice data is to compute *choice counts*, which are cross tabs on the number of times respondents chose an alternative x each feature. Best practice is to compute choice counts for each attribute before estimating a choice model. If we find that our model's estimates or predicted shares are not consistent with the raw counts, there might have been a mistake in the data formatting.
+
+```{r}
+xtabs(choice ~ price, data=cbc.df)
+```
+*Obs* The $30(K) price point was chosen more often than others. 
+
+```{r}
+xtabs(choice~ cargo, data=cbc.df)
+```
+
+
+#### 13.3 Fitting a Choice Model
+
+Using `mlogit` package, `mlogit` estimates the most basic and commonly used choice model, the 
+*multinomial logit model* aka conditional logit. `mlogit` requires choice data to be specially
+formatted using the `mlogit.data()` function. We pass our choice data to `mlogit.data` along with a
+few paramters telling it how the data is organized. It can accept long or wide format using 
+`shape=` parameter. The `choice, varying, and id.var` parameters indicate which columns contain the 
+response data, attributes, and the respondent IDs respectively.
+```{r}
+#install.packages("mlogit")
+library(mlogit)
+cbc.mlogit<- mlogit.data(data=cbc.df, choice="choice", shape="long", 
+                         varying=3:6, alt.levels=paste("pos",1:3),
+                         id.var="resp.id")
+```
+*Obs*: The resulting `cbc.mlogit` is an mlogit.data object that can be used to estimate our model using `mlogit()`
+
+In the `mlogit()` model, we specify 0 + in the formula indicating we don't want an intercept included. When we include the intercept, mlogit adds 2 addditiaonl paramaters that indciate preference for hte different positions in the question (left, right, middle) . In a conjoint analysis, we typically don't expect ppl to chooce a minivan because it's on the left or right in a survey question. For that rason, we do not expect the setimated alternative specific constants to differ from 0. If however, we found one of these parameters to be significant, then that indicates that some respondents are simply choosing the first or last option without reading hte question. 
+```{r}
+m1 <-mlogit(choice~0 + seat + cargo + eng + price, data=cbc.mlogit)
+summary(m1)
+```
+

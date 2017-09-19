@@ -381,4 +381,91 @@ factanal(brand.sc[,1:9], factors=2)
 * Factor 1 loads strongly on "bargain" and "value" so it might be intrepreted as a "value" factor
 * Factor 2 loads strongly on "leader" and "serious" so it can be interpreted as "category leader" factor. 
 
-Now let's compare this to a 3-factor solution. Whichever 
+Now let's compare this to a 3-factor solution. Whichever model provides more interepretable factors will be the model we keep. 
+
+```{r}
+factanal(brand.sc[,1:9], factors=3)
+```
+*Obs:* Factor 1 and 2 Interpretation is similar to 2-factor model with the exception that Factor 2 also has "serious" as a strong load. Factor 3 has strong loading on "latest" and "trendy". It fits well with the perceptual maps earlier so we will regard 3-factor model as more preferable to 2-factor model
+
+####8.3.3 EFA Rotations: Are the factors correlated or uncorrelated?
+
+We need to ask this question first to decide what kind of rotation we'll use in our EFA model. Do we think the factors should be conceptually indepdentnet of one another, or does it make more sense to consider them to be related (positive/negatively)? 
+
+The default in `factanal()` is to find factors that have zero correlation. EFA finds latent constructs that may be observed with error whereas PCA recomputes transformations of the observed adta. EFA focuses on the underlying latent dimensions whereas PCA focuses on reducing dimensionality of hte data. 
+
+For example, we might judge that value and leader are related; the leader can command a premium price while value brands aren't considered leader brands, but this is depedent on our product category. We can allow for correlation between factors using *oblique rotation* (dimensional axes are not perpendiular but are skewed by the correlations between factors hence oblique). 
+
+A common oblique rotation is "oblimin" rotation from the `GPArotation` package and `rotation="oblimin"` argument in `factanal()` 
+
+```{r}
+# Add oblimin rotation to our 3-factor model with 
+#install.packages("GPArotation")
+library(GPArotation)
+(brand.fa.oblimin <- factanal(brand.sc[,1:9], factors=3, rotation="oblimin"))
+
+```
+*Obs*: The loadings a little different, but are similar enough that it doesn't change our interpretation of the factors as "value, leader, latest". The results now include a factor correlation matrix showing the relationships between the estimated latent factors. Factor 1 is negatively correlated with Factor 2 and is essentially uncorrelated with factor 3. This is consistent with our theory that brands that are leaders are less liekley to be value brads, and thus we think this is a more interpetable result. 
+
+We can visalize the vars-to-factor loadings using a heatmap:
+```{r fig.width=5, fig.height=4}
+library(gplots)
+library(RColorBrewer)
+heatmap.2(brand.fa.oblimin$loadings,
+          col=brewer.pal(9,"Greens"), trace="none", key=F, dend="both",
+          Colv=F, cexCol=1,
+          main="\n\nFactor Loadings for Brand Adjectives")
+```
+*Obs*: This shows a distinct grouping of items as value, leader, and latest. The item "rebuy" loads on both Factor 1 and 2, which suggests that in our simulated data, consumers say they would rebuy for either reason, that it's a good value or because its a leader
+
+We can also plot a *path diagram* which shows latent variables and the individual vars that significantly load on them
+
+```{r}
+#install.packages("semPlot")
+library(semPlot)
+
+semPaths(brand.fa.oblimin, 
+         what="est", # to draw the loading estimates
+         residuals=F, # omit the residual estimates for manifest vars
+         cut=0.3, # cut loadings with absolute magnitude <0.3
+         posCol=c("white","darkgreen"), #positive loadings < cut should be colored white (or made invisible) else dark green
+         negCol=c("white", "red"), # #neg loadings < 0 should be invisible, else red
+         edge.label.cex=0.75, # loadings' text size
+         nCharNodes=7) # creates room to spell out full var names
+```
+*Obs* significant loadings on manifest vars are with bolder paths. Overall, we can represent the data with 3 underlying latent factors instead of using 9 distinct vars. This only tells us about relationships among respondents, but does not tell us much about the brands. 
+
+#### 8.3.4 Factor Analysis for Brands
+
+We can use the factor scores to determine brands' positions on the factors. 
+
+```{r}
+brand.fa.oblimin <- factanal(brand.sc[,1:9], factors=3, rotation="oblimin",
+                             scores="Bartlett") # Request bartlett scores
+str(brand.fa.oblimin) # Notice our EFA model includes individual scores for all obs per factor
+```
+```{r}
+brand.scores <-data.frame(brand.fa.oblimin$scores) # get the factor scores
+brand.scores$brand <- brand.sc$brand # add a brand column of the matching brands
+head(brand.scores)
+```
+
+```{r}
+(brand.fa.mean <- aggregate( .~ brand, data=brand.scores, mean))
+rownames(brand.fa.mean) <-brand.fa.mean[,1] # rename rows to brands
+brand.fa.mean<- brand.fa.mean[,-1] # remove the brands column
+names(brand.fa.mean) <-c("Leader", "Value", "Latest") # rename columns
+brand.fa.mean 
+```
+
+```{r}
+# create a heatmap based off aggregated data
+heatmap.2(as.matrix(brand.fa.mean),
+          col=brewer.pal(9,"GnBu"), trace="none", key=F, dend="both",
+          cexCol=1.2, main="Mean Factor Score by Brand")
+```
+*Obs*: The chart of factor scores is signficantly simpler than the full adjective matri. The brand similarities are evident again in the factor scores (f/g, b/c) 
+
+EFA is a useful way to examine the underlying structure and relatnionship of variables. When items are relatived to underlying constructs, EFA reduces data completixity by aggregating vars to create simpler, more interpretation latent vars. 
+
+

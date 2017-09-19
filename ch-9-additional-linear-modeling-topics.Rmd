@@ -1,0 +1,154 @@
+---
+title: "ch-9-additional-linear-modeling-topics"
+author: "Sonya Hua"
+date: "September 16, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+
+# set global display parameters
+knitr::opts_chunk$set(fig.width=8, fig.height=5, echo = TRUE, fig.align="center") 
+```
+
+4 additional topics on linear model is discussed here:
+
+* **Handling highly correlated observations or collinearity** Ways to detect and remediate collinearity in a data set
+
+* **Fidding models with binary outcomes or logistic regression** Such as whether a customer will purchase ap roduct or not
+
+* **Modeling individual preferences and responses as well as group-level effects using Hierarchical linear models (HLM)** for consumer preference in ratings-based conjoint analysis
+
+* **Using Bayesian methods for hierarchical models of individual preference** whereby we apply hierarchical bayesian (HB) for artings-based conjoint analysi
+
+Each topic is a foundational part of a complete toolbox for marketing analysis
+
+### 9.1. Handling HIghtly Correlated Variables
+
+##### Which variables are most predictive of online spending?
+
+```{r}
+cust.df <- read.csv("http://goo.gl/PmPkaG")
+summary(cust.df)
+```
+
+```{r}
+spend.m1 <-lm(online.spend ~.,
+              data=subset(cust.df[,-1], online.spend >0)) # Subset data where online spend is > 0 and omit cust ID column
+
+summary(spend.m1)
+```
+*Obs*:  
+
+* Online spend is closely related to the # of online transactions but not to the number of online visits, which is confusing
+* The model accounts for almost all theavailable variance (R^2 = .98). This should raise red flag. Shoulded results for online visits be signficant as well since ionline trans dpends on online visits? 
+* The standard error on store transactions is large (3.21 SE, coeff=0.135), showing that its estimate is unstable
+
+```{r fig.width=10, fig.height=10}
+library(gpairs)
+gpairs(cust.df)
+```
+*Obs*: 
+
+* There are some variables with extreme skew
+* Ther eare pairwase variables that are nearly correlated such as online visits and online trans, store trans and store spend
+
+Both situations pose problems for linear regression:
+
+1) Our first step is to remediate the situation by **transforming** the data using Box-Cox trasnformation from `forecast` package to select the transformation lambda automatically. We'll create a function.`BoxCox(object)`: Computes and optionally plots profile log-likelihoods for the parameter of the Box-Cox power transformation.
+2) At the same time, we can **standardize** the data with `scale()`. See Sec 4.5.5 on BoxCox 
+3) We select the complete cases from our data frame, dropping the customer ID column since it's not a predictor. `complete.cases()` return a logical vector indicating which cases are complete, i.e., have no missing values.
+4) Then we only take rows with positive online spend ( > 0) using `subset()`
+5) Create a vector to index all columns except `email` which isn't numeric using `which()` : Gives the TRUE indices of a logical object, allowing for array indices.
+5) lapply() the `autoTransform()` function we just created to each numeric column
+
+```{r}
+
+# Step 1 and 2
+#install.packages("forecast")
+autoTransform <- function(x) {
+  library(forecast)
+  return(scale(BoxCox(x, BoxCox.lambda(x))))
+}
+
+# Step 3 Select rows with complete cases 
+cust.df.bc <- cust.df[complete.cases(cust.df), -1]
+
+# Step 4
+cust.df.bc <- subset(cust.df.bc, online.spend > 0)
+
+# Step 5 - Create a vector of column names
+numcols<- which(colnames(cust.df.bc) !="email")
+
+#Step 6 - lapply the autotransform to each numeric column
+cust.df.bc[,numcols] <- lapply(cust.df.bc[,numcols], autoTransform)
+
+# Check work
+summary(cust.df.bc)
+
+```
+
+```{r}
+head(cust.df.bc)
+```
+
+```{r}
+gpairs(cust.df.bc)
+```
+*Obs*: We now have a df with standardized, more normally distributed values
+```{r}
+# refine the model using transformed df
+
+spend.m2<-lm(online.spend ~ ., data=cust.df.bc)
+summary(spend.m2)
+```
+*Obs*:
+
+* coefficients are smaller now since the data has been standardized. 
+* Transforming and standardiing the data, has not corrected there unrealistic estimate that onlien spend is highly related to ransfasctions yet unrelated to visits. We can confirm this using ANOVA:
+
+```{r}
+spend.m3 <-lm(online.spend ~ online.trans, data=cust.df.bc)
+
+# compare full model vs. model with spend ~ online. trans only
+anova(spend.m2, spend.m3)
+```
+*Obs*:
+
+* Full model is noo better than the one that simply predicts spending from online trans online. Thus, the null hypothesis of no difference between models can't be rejected. 
+
+The main problem here is *collinearity*: because visits and transactions are so highly related, and also linear regresssion assuems that effects are additive, an effected attributed to one var (.e. trans) is not available in the model to be attributed jointly to another thawt's hghly correlated. This will cause the standard errors to increase, which means that the coefficient estimates will be hgihly unstaable. 
+
+#### 9.1.2 Remediating Collinearity
+
+*Variance inflation factor (VIF)* is the degree of collinearity in data and measures the variance (standard error) of a coefficient in a linear regression that's increased due to shared variance with other variables vs. if variables were uncorrelated.  We use `vif()` from car package
+
+*VIF > 5 = the need to mitigate collinearity
+```{r}
+library(car)
+print(vif(spend.m2))
+```
+*Obs* VIF suggests that we need to rematdiate collinearity for online.visits, online.trans, store.trans,store.spend
+
+
+####There's 4 ways to mitigate collinearity:
+1) Remove vars athat are highly correlated
+2) Extract principal components or factors for sets of highly correlated predictors
+3) Use a stat. method that's robust to collinearity such as a random forest which only uses a subset of vars at a time
+4) Construct a new var that combines the collinear variables (suc has spend per transaction)..
+
+#### Case 1. Remove highly correlated variables (online trans, store trans)
+
+Using "-" in the formula
+```{r}
+
+
+spend.m4 <- lm(online.spend ~.-online.trans -store.trans, data=cust.df.bc)
+
+# Check variance inflation factor of vars
+library(car)
+vif(spend.m4)
+```
+
